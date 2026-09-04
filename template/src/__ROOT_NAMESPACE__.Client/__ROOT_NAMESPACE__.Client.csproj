@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>{{ROOT_NAMESPACE}}.Client</RootNamespace>
+    <AssemblyName>{{ROOT_NAMESPACE}}.Client</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../{{ROOT_NAMESPACE}}.Common/{{ROOT_NAMESPACE}}.Common.csproj" />
+    <PackageReference Include="JotunnLib" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>

@@ -1,34 +1,3 @@
-# Build outputs
-**/bin/
-**/obj/
-artifacts/
-TestResults/
-
-# Local Valheim/Jotunn development configuration
-Environment.props
-.valheim/dev.json
-.env
-
-# Generated/publicized game assemblies and local game material
-publicized_assemblies/
-unstripped_corlib/
-**/assembly_publicized/
-**/MMHOOK_*.dll
-
-# Game/server state
-*.db
-*.fwl
-worlds/
-worlds_local/
-backups/
-
-# IDE/editor
-.vs/
-.idea/
-.vscode/
-*.user
-*.suo
-
-# OS
-.DS_Store
-Thumbs.db
+__pycache__/
+*.pyc
+.pytest_cache/

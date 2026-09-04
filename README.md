@@ -1,173 +1,74 @@
-# ValheimSuite Bootstrap Package
+# ValheimSuite Bootstrap
 
-Hardened WSL-first repository scaffold for an OMP/Pi coding harness and a modular Valheim mod suite.
+A generator that produces standalone, hardened Valheim mod-suite repositories from a small set of identity parameters. It is not itself a Valheim mod.
 
-This package is a development/bootstrap repository, not a claim that Valheim runtime behavior has already been proven. It deliberately separates what can be validated statically from what must be verified against the user's actual Valheim client and dedicated server.
+## What it generates
 
-## Canonical development environment
+Each generated project is a complete, independent repository with:
 
-Use **WSL/Linux as the primary development environment**.
+- BepInEx + Jötunn plugin scaffolding across `Common` (always present) and up to three optional runtime tiers: `ServerCore`, `Client`, and `Shared.Diagnostics`.
+- Server-authoritative networking conventions and per-module Jötunn compatibility classification.
+- WSL-first build/test/deploy/package tooling driven by a single authoritative `suite.config.json`.
+- Metadata-driven client/server deployment and deterministic local packaging with SHA-256 checksums.
+- Project-local OMP resources: domain skills (`valheim-modding`, `valheim-networking`, `harmony-reverse-engineering`, `valheim-release`), a `valheim-dev` extension, and a bootstrap prompt.
 
-```text
-WSL repository + OMP/Pi + dotnet + Docker tooling
-        |
-        +-- build/test/package in WSL
-        +-- inspect Windows Valheim files through /mnt/c/...
-        +-- deploy client DLLs to Windows Valheim through /mnt/c/...
-        +-- deploy server DLLs to the Linux/Docker dedicated server
-```
+The generated project imports nothing from this repository and can be moved, renamed, or open-sourced independently.
 
-Keep the repository in the WSL filesystem, for example `~/src/valheim-mod-suite`, rather than under `/mnt/c`.
+## Supported topology
 
-Windows remains the real Valheim client runtime. Bash scripts are authoritative.
+Every module declares one compatibility category:
 
-## Runtime topology
+- `SERVER_ONLY`
+- `SHARED_OPTIONAL`
+- `SHARED_REQUIRED`
+- `CLIENT_ONLY`
 
-The architecture is intentionally unchanged from the original design:
+`ServerCore`, `Client`, and `Shared.Diagnostics` may each be individually included or omitted at generation time; `Common` is always generated.
 
-- `ValheimSuite.ServerCore`: server-only features.
-- `ValheimSuite.Shared.*`: independent client+server plugins with per-module compatibility rules.
-- `ValheimSuite.Client`: client-only presentation and convenience features.
-- `ValheimSuite.Common`: shared pure code with minimal Unity coupling.
+## WSL-first recommendation
 
-Current compatibility boundaries remain:
+Generated projects are built, tested, and packaged from WSL/Linux; the Windows Valheim client is inspected and deployed to through `/mnt/c/...`. Keep both this repository and generated repositories inside the WSL filesystem rather than under `/mnt/c`.
 
-- ServerCore: `NotEnforced / None`
-- Client: `NotEnforced / None`
-- Shared.Diagnostics: `VersionCheckOnly / Minor`
+## Requirements
 
-## Hardened metadata model
+- WSL2 (or native Linux) with `bash`, `git`, `python3`.
+- .NET SDK (for the generated project's own build/test; not required merely to generate a project).
 
-`suite.config.json` is the authoritative repository metadata source for:
+No Valheim installation or game files are needed to run the generator itself.
 
-- suite/version identity
-- plugin GUID root
-- dependency pins
-- C# language version
-- project scopes and target frameworks
-- client/server package membership
-
-Generated committed outputs are synchronized with:
+## Interactive generation
 
 ```bash
-python3 scripts/suite_metadata.py sync
+./scripts/create-project.sh
 ```
 
-Validate them with:
+Prompts for suite name, root namespace, plugin GUID root, author, Thunderstore namespace, initial version, output directory, and which optional modules (`ServerCore`, `Client`, `Shared.Diagnostics`) to include.
+
+## Non-interactive generation
 
 ```bash
-python3 scripts/suite_metadata.py check
+./scripts/create-project.sh \
+  --name Vibeheim --namespace Vibeheim --guid com.example.vibeheim \
+  --author "Your Name" --thunderstore-namespace YourNS --version 0.1.0 \
+  --output ~/src/vibeheim
 ```
 
-The check fails if generated constants, MSBuild metadata, package locks, project target frameworks, or package classifications drift from the authoritative config.
+Add `--no-server-core`, `--no-client`, or `--no-shared-diagnostics` to omit an optional module. Add `--force` to overwrite a non-empty output directory (refused for the bootstrapper's own repository, its ancestors, `/`, and `$HOME`).
 
-## Start here
-
-1. Extract/copy this repository inside the WSL filesystem.
-2. Copy `Environment.props.example` to `Environment.props` and edit the WSL-visible Windows Valheim path.
-3. Copy `.valheim/dev.json.example` to `.valheim/dev.json` and edit development targets.
-4. Ensure the development Windows Valheim installation contains the pinned BepInExPack and Jötunn runtime.
-5. Run:
+## Generated-project first steps
 
 ```bash
-./scripts/preflight.sh
-./scripts/bootstrap.sh
-```
-
-6. Start OMP in the repository root.
-7. Run `/bootstrap-valheim` or ask the harness to execute `BOOTSTRAP_PROMPT.md`.
-
-For a portable repository-only check without local Valheim paths:
-
-```bash
+cd ~/src/vibeheim
+cp Environment.props.example Environment.props
+cp .valheim/dev.json.example .valheim/dev.json
 ./scripts/preflight.sh --portable
 ```
 
-## First full plugin build
+## Dogfood: Vibeheim
 
-Jötunn relies on publicized game assemblies. `DoPrebuild.props` defaults to `false` deliberately so merely extracting/running portable tests does not mutate the local Valheim development installation.
+Vibeheim at `~/src/vibeheim` is the first project generated by ValheimSuite Bootstrap. Generic improvements discovered while developing Vibeheim should be upstreamed to this repository's `template/`; Vibeheim's own gameplay (AutoFeed and anything else) stays entirely inside the Vibeheim repository.
 
-If `valheim_Data/Managed/publicized_assemblies` is not already present, deliberately enable Jötunn prebuild in `DoPrebuild.props` for the first full plugin build, after confirming `VALHEIM_INSTALL` points at the intended development copy of Valheim.
+## Documentation
 
-Then run:
-
-```bash
-./scripts/build.sh Debug
-```
-
-## Deployment
-
-Both Bash deployment and OMP deployment use the same metadata-driven `scripts/deploy.py` implementation.
-
-```bash
-./scripts/deploy-client.sh Debug
-./scripts/deploy-server.sh Debug
-```
-
-Client receives only Common + Shared client modules + Client.
-Server receives only Common + ServerCore + Shared server modules.
-
-No glob-based side classification is used.
-
-## Packaging
-
-`package.sh` is no longer a placeholder. It performs a Release build and creates deterministic local distribution ZIPs plus SHA-256 checksums under `artifacts/packages/`:
-
-```bash
-./scripts/package.sh
-```
-
-These are local/test distribution packages. Public Thunderstore publication still requires final branding, namespace, license, descriptions/icons, and a clean runtime validation pass.
-
-Run this before public publication metadata work:
-
-```bash
-python3 scripts/suite_metadata.py check --release
-```
-
-It intentionally fails while the working codename/GUID/author placeholders remain.
-
-## Current dependency baseline
-
-Pinned at package hardening time, 2026-09-04:
-
-- Jötunn: 2.29.2
-- BepInExPack Valheim: 5.4.2333
-- Microsoft.NETFramework.ReferenceAssemblies: 1.0.3 for cross-platform `net48` targeting
-- runtime plugins: `net48`, C# 10
-
-Dependency changes must be deliberate and documented. Do not silently float them.
-
-## OMP layout
-
-Project-local OMP resources use native discovery:
-
-- `.omp/skills/*/SKILL.md`
-- `.omp/extensions/valheim-dev/index.ts`
-- `.omp/prompts/bootstrap-valheim.md`
-
-No generic project planner/reviewer/scout agents are added. Use the harness's installed planning and subagent capabilities.
-
-## What is proven before local runtime validation
-
-The hardened scaffold includes automated checks for:
-
-- metadata consistency
-- configured project existence and target frameworks
-- client/server module separation
-- Bash syntax and executable flags
-- local secret/config ignore rules
-- generated constants being authoritative
-- cross-platform `net48` reference package inclusion
-- original Jötunn compatibility boundaries
-- real deterministic packaging implementation
-- removal of arbitrary configured log-command execution from the OMP extension
-
-What still requires the user's machine:
-
-- full Jötunn/Valheim plugin compilation
-- OMP extension load against the installed OMP package
-- dedicated-server plugin load
-- actual multiplayer compatibility behavior
-- Shared Diagnostics RPC implementation/runtime proof
-- AutoFeed game-internal behavior
+- `docs/GENERATOR_ARCHITECTURE.md`: how `bootstrap/` renders and validates a project.
+- `docs/TEMPLATE_MAINTENANCE.md`: the token vocabulary and how to extend `template/`.

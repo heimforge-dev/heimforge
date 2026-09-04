@@ -24,3 +24,8 @@
 - Replaced placeholder packaging with deterministic local ZIPs and SHA-256 checksums.
 - Added repository scaffold regression tests.
 - Added explicit public-release metadata gate.
+
+### Bootstrapper
+
+- Converted the fixed ValheimSuite v3 scaffold into a generic ValheimSuite Bootstrap generator (`bootstrap/` + `template/` + `tests/{bootstrap,template,fixtures}` + `scripts/create-project.sh`/`validate-template.sh`).
+- Generated the standalone Vibeheim project as the first dogfood output.

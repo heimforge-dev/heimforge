@@ -1,0 +1,1 @@
+"""Template structural tests."""

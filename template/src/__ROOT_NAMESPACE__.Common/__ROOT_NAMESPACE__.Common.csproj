@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>{{ROOT_NAMESPACE}}.Common</RootNamespace>
+    <AssemblyName>{{ROOT_NAMESPACE}}.Common</AssemblyName>
+  </PropertyGroup>
+</Project>

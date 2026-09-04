@@ -1,0 +1,15 @@
+<Project>
+  <!-- $(JotunnVersion)/$(NetFrameworkReferenceAssembliesVersion) come from build/Suite.Generated.props,
+       already imported by Directory.Build.props, which MSBuild evaluates first. Do not re-import it
+       here: MSBuild skips/warns (MSB4011) on a second import of the same file. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="JotunnLib" Version="$(JotunnVersion)" />
+    <PackageVersion Include="Microsoft.NETFramework.ReferenceAssemblies" Version="$(NetFrameworkReferenceAssembliesVersion)" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
+  </ItemGroup>
+</Project>

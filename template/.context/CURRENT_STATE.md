@@ -1,0 +1,42 @@
+## Working
+
+- {{SUITE_NAME}} generated from ValheimSuite Bootstrap.
+{{INCLUDED_MODULES_LIST}}
+- `suite.config.json` is the authoritative metadata/package map.
+- Generated MSBuild/C# package metadata is synchronized and validated.
+- Cross-platform `net48` reference assemblies are explicitly declared.
+- Metadata-driven deployment prevents client/server DLL cross-contamination.
+- Deterministic local package generation and SHA-256 checksums are implemented.
+- Portable scaffold tests cover repository invariants.
+
+## In Progress
+
+- Local WSL/Valheim environment verification.
+- First successful full plugin build against installed Valheim/Jötunn.
+- OMP extension load verification against the user's installed OMP version.
+
+## Next
+
+1. Configure `Environment.props` and `.valheim/dev.json`.
+2. Run `./scripts/preflight.sh`.
+3. Run `./scripts/bootstrap.sh`.
+4. If publicized assemblies are absent, deliberately enable Jötunn prebuild for the development Valheim install.
+5. Run `./scripts/build.sh Debug`.
+6. Load OMP and verify the `valheim-dev` extension/tools.
+7. Design and implement the first real feature using `docs/features/TEMPLATE.md`.
+
+## Known Issues / Deliberate Incompleteness
+
+- Installed Valheim version is not yet recorded.
+- Runtime-side detection code must be verified against current APIs before feature activation.
+- Public Thunderstore manifests/assets are not generated yet. Local deterministic ZIP packaging is implemented.
+
+## Last Verified
+
+Valheim: UNVERIFIED LOCALLY
+BepInExPack: {{BEPINEX_VERSION}} pin
+Jötunn: {{JOTUNN_VERSION}} pin
+Microsoft.NETFramework.ReferenceAssemblies: {{NETFX_REF_VERSION}} pin
+Repository scaffold tests: PASS at generation time
+Server build: NOT RUN IN USER ENVIRONMENT
+Client build: NOT RUN IN USER ENVIRONMENT
