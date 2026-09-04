@@ -1,0 +1,13 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)build/Suite.Generated.props" />
+  <Import Project="$(MSBuildThisFileDirectory)Environment.props" Condition="Exists('$(MSBuildThisFileDirectory)Environment.props')" />
+
+  <PropertyGroup>
+    <LangVersion>$(SuiteCSharpLanguageVersion)</LangVersion>
+    <Nullable>enable</Nullable>
+    <Deterministic>true</Deterministic>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Version>$(SuiteVersion)</Version>
+    <Authors>$(SuiteAuthors)</Authors>
+  </PropertyGroup>
+</Project>

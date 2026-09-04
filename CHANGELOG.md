@@ -1,0 +1,26 @@
+# Changelog
+
+## 0.1.0 - Unreleased
+
+### Architecture
+
+- Initial modular suite scaffold.
+- Server Core, Client, Common, and Shared Diagnostics project shells.
+- Preserved per-module Jötunn compatibility boundaries.
+
+### Harness
+
+- OMP project context, domain skills, extension, and bootstrap prompt.
+- WSL-first canonical workflow.
+
+### Hardening
+
+- Added `suite.config.json` as authoritative build/package metadata with generated consistency-checked outputs.
+- Added WSL/local-environment preflight validation.
+- Added private `Microsoft.NETFramework.ReferenceAssemblies` dependency for cross-platform `net48` builds.
+- Centralized client/server deployment classification in metadata-driven `scripts/deploy.py`.
+- Added stale suite-DLL cleanup during development deployment.
+- Hardened OMP assembly inspection and server log handling.
+- Replaced placeholder packaging with deterministic local ZIPs and SHA-256 checksums.
+- Added repository scaffold regression tests.
+- Added explicit public-release metadata gate.

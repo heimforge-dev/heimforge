@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": "suite.config.json",
+  "suiteVersion": "0.1.0",
+  "dependencies": {
+    "denikson-BepInExPack_Valheim": "5.4.2333",
+    "ValheimModding-Jotunn": "2.29.2"
+  },
+  "serverModules": [
+    "ValheimSuite.ServerCore",
+    "ValheimSuite.Shared.Diagnostics"
+  ],
+  "requiredClientModules": [],
+  "optionalClientModules": [
+    "ValheimSuite.Shared.Diagnostics"
+  ],
+  "clientOnlyModules": [
+    "ValheimSuite.Client"
+  ]
+}
