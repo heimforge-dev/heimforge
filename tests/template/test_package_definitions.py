@@ -9,13 +9,20 @@ TEMPLATE_SCRIPTS = Path(__file__).resolve().parents[2] / "template" / "scripts"
 
 
 def _load_package_module():
+    # Importing directly from template/scripts (rather than a rendered
+    # output copy) must never write __pycache__ into the live template —
+    # that's exactly the kind of untracked template contamination
+    # validate_template() now rejects.
     sys.path.insert(0, str(TEMPLATE_SCRIPTS))
+    previous_dont_write_bytecode = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
     try:
         import package as pkg
 
         importlib.reload(pkg)
         return pkg
     finally:
+        sys.dont_write_bytecode = previous_dont_write_bytecode
         sys.path.remove(str(TEMPLATE_SCRIPTS))
 
 

@@ -10,6 +10,7 @@ decides whether a generation attempt is safe to hand to the user.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -19,6 +20,15 @@ from pathlib import Path
 
 from .model import ProjectParams
 from .render import TOKEN_RE
+
+# Every `python3`/`bash` subprocess below runs *inside* `output_dir`, which
+# is promoted verbatim into the delivered project. Without this, importing
+# a local module (e.g. `tests/scaffold/test_scaffold.py`) writes a
+# `__pycache__/*.pyc` that ships as part of the generated project — the
+# same "local files incorporated into every generated project" problem
+# the template manifest closes for `template/` itself, just at the
+# staging-execution boundary instead of the render boundary.
+NO_BYTECODE_ENV = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
 
 # Bootstrapper-owned implementation identity that must never survive into a
 # generated project's own code/metadata. Deliberately narrow: legitimate
@@ -135,7 +145,11 @@ def validate_generated(output_dir: Path, params: ProjectParams) -> ValidationRes
         r.errors.append("client package set contains a serverOnly project")
 
     proc = subprocess.run(
-        ["python3", "scripts/suite_metadata.py", "check"], cwd=output_dir, text=True, capture_output=True
+        ["python3", "scripts/suite_metadata.py", "check"],
+        cwd=output_dir,
+        env=NO_BYTECODE_ENV,
+        text=True,
+        capture_output=True,
     )
     if proc.returncode != 0:
         r.errors.append(f"suite_metadata check failed: {proc.stdout}{proc.stderr}")
@@ -143,6 +157,7 @@ def validate_generated(output_dir: Path, params: ProjectParams) -> ValidationRes
     proc = subprocess.run(
         ["python3", "-m", "unittest", "discover", "-s", "tests/scaffold", "-p", "test_*.py"],
         cwd=output_dir,
+        env=NO_BYTECODE_ENV,
         text=True,
         capture_output=True,
     )
@@ -153,11 +168,17 @@ def validate_generated(output_dir: Path, params: ProjectParams) -> ValidationRes
         r.skipped.append("dotnet not installed: skipped scripts/preflight.sh --portable and scripts/test.sh")
     else:
         proc = subprocess.run(
-            ["bash", "scripts/preflight.sh", "--portable", "--json"], cwd=output_dir, text=True, capture_output=True
+            ["bash", "scripts/preflight.sh", "--portable", "--json"],
+            cwd=output_dir,
+            env=NO_BYTECODE_ENV,
+            text=True,
+            capture_output=True,
         )
         if proc.returncode != 0:
             r.errors.append(f"portable preflight failed: {proc.stdout}{proc.stderr}")
-        proc = subprocess.run(["bash", "scripts/test.sh"], cwd=output_dir, text=True, capture_output=True)
+        proc = subprocess.run(
+            ["bash", "scripts/test.sh"], cwd=output_dir, env=NO_BYTECODE_ENV, text=True, capture_output=True
+        )
         if proc.returncode != 0:
             r.errors.append(f"scripts/test.sh failed: {proc.stdout}{proc.stderr}")
 

@@ -4,6 +4,11 @@
 artifacts/
 TestResults/
 
+# Python bytecode cache (scripts/*.py run locally)
+__pycache__/
+*.pyc
+*.pyo
+
 # Local Valheim/Jotunn development configuration
 Environment.props
 .valheim/dev.json

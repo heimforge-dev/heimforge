@@ -8,17 +8,19 @@ import argparse
 import ctypes
 import json
 import os
+import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
 from . import naming
 from .model import ProjectModel, ProjectParams, build_model, solution_text, suite_config_dict, validate_params
-from .render import render_tree
-from .validate_generated import ValidationResult, validate_generated
+from .render import TEMPLATE_DIR, render_tree, validate_template
+from .validate_generated import NO_BYTECODE_ENV, ValidationResult, validate_generated
 
 
 class GenerationError(RuntimeError):
@@ -534,18 +536,27 @@ def _promote_staging(approval: _DestinationApproval, staging_name: str) -> None:
             os.close(isolated_fd)
 
 
-def generate(params: ProjectParams, output_dir: Path, force: bool = False) -> ValidationResult:
+def generate(
+    params: ProjectParams, output_dir: Path, force: bool = False, template_dir: Path | None = None
+) -> ValidationResult:
     validate_params(params)
+    resolved_template_dir = Path(template_dir) if template_dir is not None else TEMPLATE_DIR
     approval = _approve_destination(output_dir, force)
     parent_fd = approval.parent_fd
     try:
+        template_errors = validate_template(resolved_template_dir)
+        if template_errors:
+            raise GenerationError(
+                "refusing to generate from an invalid template:\n"
+                + "\n".join(f"  - {e}" for e in template_errors)
+            )
         staging_name = f".{approval.name}.staging-{uuid.uuid4().hex}"
         os.mkdir(staging_name, dir_fd=parent_fd)
         staging_fd = _open_dir_at(staging_name, parent_fd)
         try:
             staging_dir = Path(f"/proc/{os.getpid()}/fd/{staging_fd}")
             model: ProjectModel = build_model(params)
-            render_tree(model, staging_dir)
+            render_tree(model, staging_dir, template_dir=resolved_template_dir)
 
             (staging_dir / "suite.config.json").write_text(
                 json.dumps(suite_config_dict(model), indent=2) + "\n", encoding="utf-8"
@@ -553,12 +564,28 @@ def generate(params: ProjectParams, output_dir: Path, force: bool = False) -> Va
             (staging_dir / f"{params.root_namespace}.sln").write_text(solution_text(model), encoding="utf-8")
 
             sync = subprocess.run(
-                ["python3", "scripts/suite_metadata.py", "sync"], cwd=staging_dir, text=True, capture_output=True
+                ["python3", "scripts/suite_metadata.py", "sync"],
+                cwd=staging_dir,
+                env=NO_BYTECODE_ENV,
+                text=True,
+                capture_output=True,
             )
             if sync.returncode != 0:
                 raise GenerationError(f"suite_metadata.py sync failed: {sync.stdout}{sync.stderr}")
 
-            result = validate_generated(staging_dir, params)
+            # `validate_generated()` runs the generated project's own build/test
+            # commands (`dotnet test`, when an SDK is present); those mutate
+            # whatever tree they run in (`bin/`, `obj/`, ...). Validating a
+            # disposable copy -- and promoting only the pristine `staging_dir`
+            # rendered above -- keeps the promoted output deterministic
+            # regardless of whether a .NET SDK happens to be installed.
+            validation_dir = Path(tempfile.mkdtemp(prefix=f".{approval.name}.validation-"))
+            try:
+                shutil.copytree(staging_dir, validation_dir, dirs_exist_ok=True)
+                result = validate_generated(validation_dir, params)
+            finally:
+                shutil.rmtree(validation_dir, ignore_errors=True)
+
             if result.ok:
                 _promote_staging(approval, staging_name)
             else:

@@ -1,5 +1,19 @@
 # Template Maintenance
 
+## The template manifest
+
+`bootstrap/template_manifest.py` is the template definition: `REQUIRED_TEMPLATE_FILES` (rendered unconditionally) and `OPTIONAL_TEMPLATE_FILES` (rendered per included optional module). `template/`'s filesystem contents are not themselves the template — `render_tree()` renders exactly the manifest's approved paths, and `validate_template()` (backing `scripts/validate-template.sh`) fails if a manifest file is missing, or if `template/` contains a filesystem entry — file *or* directory, empty or not — that isn't in (or a required ancestor of) the manifest. Adding a file under `template/` without adding it here has no effect on generated output and fails validation instead of being silently ignored.
+
+Every manifest entry must be a normalized, relative, POSIX-style path: no leading `/`, no backslashes, no `.`/`..` component, and no double slashes. `validate_manifest_structure()` enforces this on the manifest itself (not just on what happens to exist in `template/`), and also rejects a path listed in more than one group (`REQUIRED_TEMPLATE_FILES` and an `OPTIONAL_TEMPLATE_FILES` set, or two different `OPTIONAL_TEMPLATE_FILES` sets). A literal path repeated *within* one `{...}` set is not separately checked for — Python's `frozenset` already collapses that to one element before any validation runs, so there is nothing to observe.
+
+A manifest-approved path is also re-verified at the moment of reading: `render_tree()`/`validate_template()` open every source through `_open_source_file()`, which refuses to follow a symlink at any path component (including the final one) and refuses anything that isn't a plain regular file. Substituting a symlink for an approved file, or for one of its parent directories, fails validation instead of silently rendering whatever the symlink points at.
+
+## Adding a new template file
+
+1. Add the file under `template/` at the path it should render to (using `__ROOT_NAMESPACE__` for module-specific `src/`/`tests/` directories).
+2. Add its `template/`-relative path to `bootstrap/template_manifest.py`'s `REQUIRED_TEMPLATE_FILES` (or the relevant `OPTIONAL_TEMPLATE_FILES[module]` set if it belongs to an optional module).
+3. Run `scripts/validate-template.sh`.
+
 ## Token vocabulary
 
 Every text file under `template/` may use only the tokens below. `bootstrap/render.py`'s `validate_template()` (backing `scripts/validate-template.sh`) fails the build if an unknown `{{TOKEN}}` appears anywhere in `template/`.
@@ -35,7 +49,7 @@ Path token: `__ROOT_NAMESPACE__` — substring-replaced in path segments only (e
 
 1. Extend `ProjectParams` (new `include_<module>: bool = True` field) and `ProjectModel`/`build_model()` in `bootstrap/model.py`.
 2. Add the module to `ProjectModel.modules`, `suite_config_dict()`, and `solution_text()`.
-3. Add the module's template directory under `template/src/__ROOT_NAMESPACE__.<Module>/` and register it in `bootstrap/render.py`'s `OPTIONAL_DIR_FLAGS`.
+3. Add the module's template directory under `template/src/__ROOT_NAMESPACE__.<Module>/`, register its files under a new key in `bootstrap/template_manifest.py`'s `OPTIONAL_TEMPLATE_FILES`, and add that key to `bootstrap/render.py`'s `OPTIONAL_MODULE_PRESENT`.
 4. Add a CLI flag (`--no-<module>`) and interactive prompt in `bootstrap/create_project.py`.
 5. Add fixture test coverage for both the included and omitted case (`tests/fixtures/`), including that `scripts/package.py`'s `package_definitions()` does not emit an empty package for the omitted module.
 
