@@ -61,9 +61,13 @@ Path token: `__ROOT_NAMESPACE__` — substring-replaced in path segments only (e
 
 ## Deliberate duplication: `bootstrap/naming.py` vs `template/scripts/suite_metadata.py`
 
-`bootstrap/naming.py`'s `SEMVER_RE`/`GUID_ROOT_RE`/`NAMESPACE_SEGMENT`, C# keyword set, and portable path-component rules intentionally mirror the generated scripts' `SEMVER`/`GUID_ROOT`/`NAMESPACE_SEGMENT`, C# keyword set, and `NAME_COMPONENT`. A generated project must never import bootstrapper code — its own `suite_metadata.py check`/`sync` is the only thing that validates its `suite.config.json` at runtime, and it must do so independently even after a maintainer hand-edits the file — so the copies are kept in sync by convention, not by a shared dependency. Update both together when either changes.
+`bootstrap/naming.py`'s `validate_semver()`/`GUID_ROOT_RE`/`NAMESPACE_SEGMENT`, C# keyword set, `THUNDERSTORE_NAMESPACE_RE`, and portable path-component rules intentionally mirror the generated scripts' `validate_semver()`/`GUID_ROOT`/`NAMESPACE_SEGMENT`, C# keyword set, `THUNDERSTORE_NAMESPACE`, and `NAME_COMPONENT`. `validate_semver()` implements SemVer 2.0.0 syntax (https://semver.org) directly rather than as one regex — see `tests/bootstrap/test_naming.py` and `tests/template/test_naming_grammar.py`'s `BootstrapGeneratedGrammarAlignmentTests` for the shared case list that keeps both copies from drifting apart. A generated project must never import bootstrapper code — its own `suite_metadata.py check`/`sync` is the only thing that validates its `suite.config.json` at runtime, and it must do so independently even after a maintainer hand-edits the file — so the copies are kept in sync by convention, not by a shared dependency. Update both together when either changes.
 
 `suite_metadata.py` additionally enforces path-containment and archive-safety rules (`contain`, `package.py`'s `validate_arcname`) that have no bootstrapper-side counterpart, because the bootstrapper never re-derives filesystem paths from arbitrary post-generation edits the way the generated project's own `sync`/`package.py` must.
+
+## `.ts` token rendering never trusts input grammar alone
+
+`render_tree()` renders every `.ts` destination through `_ts_string_escape()` (JSON-string escaping of the substituted value, without its outer quotes) instead of raw substitution, because every current `{{TOKEN}}` use in a `.ts` file sits inside an existing double-quoted string literal (e.g. `label: "Build {{SUITE_NAME}}"` in `template/.omp/extensions/valheim-dev/index.ts`). This is defense-in-depth on top of, not a replacement for, each token's own grammar (`naming.validate_path_component()` for `SUITE_NAME`, etc.) — see `tests/bootstrap/test_render_ts_escaping.py`.
 
 ## Keeping `template/` generic
 

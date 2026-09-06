@@ -48,8 +48,10 @@ def _validate_name(value: str, field: str) -> str:
 
 def _package_output_path(name: str, version: str) -> Path:
     _validate_name(name, "package name")
-    if not metadata.SEMVER.match(version):
-        raise PackageError(f"package version is not valid semantic-version syntax: {version!r}")
+    try:
+        metadata.validate_semver(version, "package version")
+    except metadata.MetadataError as exc:
+        raise PackageError(str(exc)) from exc
     return metadata.contain(OUT / f"{name}-{version}.zip", OUT, error_cls=PackageError)
 
 

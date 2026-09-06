@@ -81,5 +81,24 @@ class ModelTests(unittest.TestCase):
                 params = make_params(root_namespace=namespace)
                 validate_params(params)
                 self.assertEqual(f"{namespace}.Common", build_model(params).common.project_name)
+
+    def test_validate_params_rejects_malformed_thunderstore_namespace(self):
+        """Original bug: `ProjectParams(thunderstore_namespace="Bad Name!")`
+        passed generator-time validation via the generic `validate_label`."""
+        with self.assertRaises(naming.NamingError):
+            validate_params(make_params(thunderstore_namespace="Bad Name!"))
+
+    def test_validate_params_rejects_malformed_semver(self):
+        """Original bug: `01.2.3` and `1.2.3-alpha..1` passed
+        generator-time SemVer validation."""
+        for bad in ("01.2.3", "1.2.3-alpha..1", "1.2.3-..."):
+            with self.subTest(bad=bad):
+                with self.assertRaises(naming.NamingError):
+                    validate_params(make_params(suite_version=bad))
+
+    def test_validate_params_accepts_valid_build_metadata_semver(self):
+        validate_params(make_params(suite_version="1.2.3-alpha+build.1"))
+
+
 if __name__ == "__main__":
     unittest.main()

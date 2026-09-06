@@ -7,7 +7,9 @@ independence from the bootstrapper is proven by construction.
 
 from __future__ import annotations
 
+import importlib
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
@@ -38,6 +40,28 @@ def copy_template_to_temp() -> Path:
     dest = Path(tempfile.mkdtemp(prefix="valheimsuite-bootstrap-template-copy-"))
     shutil.copytree(TEMPLATE_DIR, dest, dirs_exist_ok=True)
     return dest
+
+
+def import_scripts_from(scripts_dir: Path):
+    """Import fresh `suite_metadata`/`package` modules from `scripts_dir`,
+    so `ROOT = Path(__file__).resolve().parents[1]` inside each resolves
+    to `scripts_dir.parent` -- a disposable copy or generated project,
+    never the live `template/`."""
+    sys.path.insert(0, str(scripts_dir))
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        sys.modules.pop("suite_metadata", None)
+        sys.modules.pop("package", None)
+        import suite_metadata as sm
+        import package as pkg
+
+        importlib.reload(sm)
+        importlib.reload(pkg)
+        return sm, pkg
+    finally:
+        sys.dont_write_bytecode = previous
+        sys.path.remove(str(scripts_dir))
 
 
 def generate_into_temp(*, template_dir: Path | None = None, **overrides) -> tuple[ProjectParams, Path, ValidationResult]:

@@ -26,6 +26,7 @@ anything is written.
 from __future__ import annotations
 
 import errno
+import json
 import os
 import posixpath
 import re
@@ -153,12 +154,22 @@ def _read_source_file(template_dir: Path, rel: str) -> bytes:
         return f.read()
 
 
-def _substitute(text: str, tokens: dict[str, str]) -> str:
+def _ts_string_escape(value: str) -> str:
+    """Escape `value` for embedding inside an existing TypeScript/
+    JavaScript double-quoted string literal. JSON string escaping is a
+    safe subset of JS string escaping -- quotes, backslashes, and every
+    control character are escaped identically -- so a generated `.ts`
+    file's syntax never depends solely on a token's input grammar."""
+    return json.dumps(value)[1:-1]
+
+
+def _substitute(text: str, tokens: dict[str, str], *, escape=None) -> str:
     def repl(match: re.Match) -> str:
         key = match.group(1)
         if key not in tokens:
             raise RenderError(f"unknown template token {{{{{key}}}}}")
-        return tokens[key]
+        value = tokens[key]
+        return escape(value) if escape else value
 
     return TOKEN_RE.sub(repl, text)
 
@@ -224,7 +235,8 @@ def render_tree(model: ProjectModel, output_dir: Path, template_dir: Path = TEMP
         except UnicodeDecodeError:
             dest.write_bytes(data)
             continue
-        dest.write_text(_substitute(text, tokens), encoding="utf-8", newline="\n")
+        escape = _ts_string_escape if dest_str.endswith(".ts") else None
+        dest.write_text(_substitute(text, tokens, escape=escape), encoding="utf-8", newline="\n")
         if rel.endswith(".sh"):
             dest.chmod(0o755)
 

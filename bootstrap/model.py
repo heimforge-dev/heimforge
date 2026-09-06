@@ -39,7 +39,7 @@ def validate_params(p: ProjectParams) -> None:
     naming.validate_namespace(p.root_namespace, "rootNamespace")
     naming.validate_guid_root(p.plugin_guid_root)
     naming.validate_label(p.author, "author")
-    naming.validate_label(p.thunderstore_namespace, "thunderstoreNamespace")
+    naming.validate_thunderstore_namespace(p.thunderstore_namespace, "thunderstoreNamespace")
     naming.validate_semver(p.suite_version, "suiteVersion")
     build_model(p)
 

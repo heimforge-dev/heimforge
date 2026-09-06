@@ -11,7 +11,6 @@ pre-fix reproduction run can never contaminate this repository.
 from __future__ import annotations
 
 import contextlib
-import importlib
 import json
 import os
 import shutil
@@ -27,27 +26,7 @@ from pathlib import Path
 
 from bootstrap.model import ProjectParams, build_model, suite_config_dict
 from tests.fixtures._helpers import copy_template_to_temp, generate_into_temp
-
-
-def _import_scripts_from(scripts_dir: Path):
-    """Import fresh `suite_metadata`/`package` modules from `scripts_dir`,
-    so `ROOT = Path(__file__).resolve().parents[1]` inside each resolves to
-    `scripts_dir.parent` -- a disposable copy, never the live template."""
-    sys.path.insert(0, str(scripts_dir))
-    previous = sys.dont_write_bytecode
-    sys.dont_write_bytecode = True
-    try:
-        sys.modules.pop("suite_metadata", None)
-        sys.modules.pop("package", None)
-        import suite_metadata as sm
-        import package as pkg
-
-        importlib.reload(sm)
-        importlib.reload(pkg)
-        return sm, pkg
-    finally:
-        sys.dont_write_bytecode = previous
-        sys.path.remove(str(scripts_dir))
+from tests.fixtures._helpers import import_scripts_from as _import_scripts_from
 
 
 def _run(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
@@ -300,6 +279,7 @@ class NamespaceValidationTests(unittest.TestCase):
             "Vibe\nheim",  # control character
             "1Vibeheim",  # identifier can't start with a digit
             "class",  # reserved C# keyword
+            "namespace.Tools",  # reserved keyword as first segment
             "Foo.class",  # reserved keyword segment
             "",
         ]
@@ -781,6 +761,7 @@ class BootstrapGrammarAlignmentTests(unittest.TestCase):
         cases = (
             (("--name", "My Suite", "--namespace", "TestSuite"), "suiteName"),
             (("--name", "TestSuite", "--namespace", "class"), "rootNamespace"),
+            (("--name", "TestSuite", "--namespace", "TestSuite", "--version", "01.2.3"), "suiteVersion"),
         )
         for extra, field in cases:
             with self.subTest(extra=extra):
