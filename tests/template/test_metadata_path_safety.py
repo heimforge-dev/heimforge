@@ -655,6 +655,7 @@ class PackageWriteBoundaryTests(unittest.TestCase):
         output_dir, cfg = self._generated_project_with_artifacts()
         for project in ("Foo.Bar", "foo-bar"):
             cfg["projects"][project] = {"scope": "sharedOptional", "targetFramework": "net48"}
+            cfg["packages"]["serverModules"].append(project)
             cfg["packages"]["optionalClientModules"].append(project)
             project_dir = output_dir / "src" / project
             project_dir.mkdir()

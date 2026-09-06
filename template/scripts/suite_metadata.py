@@ -26,6 +26,24 @@ _UNSET = object()
 GUID_ROOT = re.compile(r"^[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)+\Z")
 VALID_SCOPES = {"common", "serverOnly", "clientOnly", "sharedOptional", "sharedRequired"}
 
+# The four package/deployment membership groups from suite.config.json's
+# "packages" object. deploy.py's modules_for() and package.py's
+# package_definitions() both read these same four arrays directly, so this
+# tuple and SCOPE_PACKAGE_GROUPS below are the single source of truth they
+# must stay aligned with.
+PACKAGE_GROUPS = ("serverModules", "requiredClientModules", "optionalClientModules", "clientOnlyModules")
+
+# The exact set of package/deployment groups a project's declared
+# compatibility scope requires it to belong to -- no more, no less. A
+# project must appear in every listed group and in none of the others.
+SCOPE_PACKAGE_GROUPS: dict[str, frozenset[str]] = {
+    "common": frozenset(),
+    "serverOnly": frozenset({"serverModules"}),
+    "sharedRequired": frozenset({"serverModules", "requiredClientModules"}),
+    "sharedOptional": frozenset({"serverModules", "optionalClientModules"}),
+    "clientOnly": frozenset({"clientOnlyModules"}),
+}
+
 # The Thunderstore namespace charset (reviewer-verified contract): max 64
 # characters; first and last character alphanumeric; internal characters
 # alphanumeric or '_'. Distinct from the looser package-name charset at
@@ -295,7 +313,7 @@ def validate(cfg: dict, release: bool = False) -> None:
             raise MetadataError(f"projects.{project} must be an object")
         scope = item.get("scope")
         tfm = item.get("targetFramework")
-        if scope not in VALID_SCOPES:
+        if not isinstance(scope, str) or scope not in VALID_SCOPES:
             raise MetadataError(f"projects.{project}.scope must be one of {sorted(VALID_SCOPES)}")
         if not isinstance(tfm, str):
             raise MetadataError(f"projects.{project}.targetFramework must be a non-empty string")
@@ -308,14 +326,8 @@ def validate(cfg: dict, release: bool = False) -> None:
     if not isinstance(common, str) or common not in projects or projects[common]["scope"] != "common":
         raise MetadataError("packages.commonModule must identify the project with scope=common")
 
-    groups = {
-        "serverModules": {"serverOnly", "sharedOptional", "sharedRequired"},
-        "requiredClientModules": {"sharedRequired"},
-        "optionalClientModules": {"sharedOptional"},
-        "clientOnlyModules": {"clientOnly"},
-    }
-    seen_client: set[str] = set()
-    for group, allowed_scopes in groups.items():
+    group_values: dict[str, list[str]] = {}
+    for group in PACKAGE_GROUPS:
         values = packages.get(group)
         if not isinstance(values, list):
             raise MetadataError(f"packages.{group} must be an array")
@@ -326,19 +338,27 @@ def validate(cfg: dict, release: bool = False) -> None:
         for project in values:
             if project not in projects:
                 raise MetadataError(f"packages.{group} references unknown project {project}")
-            if projects[project]["scope"] not in allowed_scopes:
-                raise MetadataError(
-                    f"packages.{group} contains {project} with incompatible scope {projects[project]['scope']}"
-                )
-            if group != "serverModules":
-                if project in seen_client:
-                    raise MetadataError(f"client package groups overlap at {project}")
-                seen_client.add(project)
+        group_values[group] = values
 
-    expected_server_only = {p for p, item in projects.items() if item["scope"] == "serverOnly"}
-    if not expected_server_only.issubset(set(packages["serverModules"])):
-        missing = sorted(expected_server_only - set(packages["serverModules"]))
-        raise MetadataError(f"server-only projects missing from packages.serverModules: {missing}")
+    # Every configured project's membership across the four groups must
+    # match exactly what its declared scope requires -- not merely a
+    # superset. This is what rejects a module silently disappearing from a
+    # side its scope requires (e.g. a sharedOptional module omitted from
+    # optionalClientModules) as well as a module placed in an incompatible
+    # group (e.g. a clientOnly module appearing in serverModules).
+    for project, item in projects.items():
+        scope = item["scope"]
+        required_groups = SCOPE_PACKAGE_GROUPS[scope]
+        actual_groups = {group for group in PACKAGE_GROUPS if project in group_values[group]}
+        if actual_groups != required_groups:
+            missing = sorted(required_groups - actual_groups)
+            extra = sorted(actual_groups - required_groups)
+            problems = []
+            if missing:
+                problems.append(f"must appear in {' and '.join(missing)}")
+            if extra:
+                problems.append(f"must not appear in {' and '.join(extra)}")
+            raise MetadataError(f"project {project} with scope {scope} " + "; ".join(problems))
 
     for project, item in projects.items():
         csproj = ROOT / "src" / project / f"{project}.csproj"
