@@ -1,6 +1,7 @@
 import unittest
 
-from bootstrap.model import ProjectParams, build_model, solution_text, suite_config_dict, token_map
+from bootstrap import naming
+from bootstrap.model import ProjectParams, build_model, solution_text, suite_config_dict, token_map, validate_params
 
 
 def make_params(**overrides) -> ProjectParams:
@@ -65,5 +66,20 @@ class ModelTests(unittest.TestCase):
         self.assertIn("ServerCore:", tokens["COMPATIBILITY_BOUNDARIES_LIST"])
 
 
+
+    def test_derived_project_names_reject_reserved_device_roots(self):
+        for namespace in ("CON", "COM1", "LPT9", "NUL"):
+            with self.subTest(namespace=namespace):
+                with self.assertRaises(naming.NamingError):
+                    validate_params(make_params(root_namespace=namespace))
+                with self.assertRaises(naming.NamingError):
+                    build_model(make_params(root_namespace=namespace))
+
+    def test_derived_project_names_preserve_portable_namespaces(self):
+        for namespace in ("_Private", "Example.Company", "Example.CON"):
+            with self.subTest(namespace=namespace):
+                params = make_params(root_namespace=namespace)
+                validate_params(params)
+                self.assertEqual(f"{namespace}.Common", build_model(params).common.project_name)
 if __name__ == "__main__":
     unittest.main()

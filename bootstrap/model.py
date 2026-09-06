@@ -35,12 +35,13 @@ class ProjectParams:
 
 
 def validate_params(p: ProjectParams) -> None:
-    naming.validate_label(p.suite_name, "suiteName")
+    naming.validate_path_component(p.suite_name, "suiteName")
     naming.validate_namespace(p.root_namespace, "rootNamespace")
     naming.validate_guid_root(p.plugin_guid_root)
     naming.validate_label(p.author, "author")
     naming.validate_label(p.thunderstore_namespace, "thunderstoreNamespace")
     naming.validate_semver(p.suite_version, "suiteVersion")
+    build_model(p)
 
 
 @dataclass(frozen=True)
@@ -83,7 +84,10 @@ def build_model(params: ProjectParams) -> ProjectModel:
         if params.include_shared_diagnostics
         else None
     )
-    return ProjectModel(params, common, server_core, client, shared_diagnostics)
+    model = ProjectModel(params, common, server_core, client, shared_diagnostics)
+    for module in model.modules:
+        naming.validate_path_component(module.project_name, "derived project name")
+    return model
 
 
 def suite_config_dict(model: ProjectModel) -> dict:

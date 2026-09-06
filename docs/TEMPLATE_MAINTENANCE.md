@@ -61,9 +61,9 @@ Path token: `__ROOT_NAMESPACE__` — substring-replaced in path segments only (e
 
 ## Deliberate duplication: `bootstrap/naming.py` vs `template/scripts/suite_metadata.py`
 
-`bootstrap/naming.py`'s `SEMVER_RE`/`GUID_ROOT_RE` intentionally mirror the shape of `suite_metadata.py`'s own `SEMVER`/`GUID_ROOT` regexes. A generated project must never import bootstrapper code — its own `suite_metadata.py check` is the only thing that validates its `suite.config.json` at runtime — so the two copies are kept in sync by convention, not by a shared dependency. Update both together when either changes.
+`bootstrap/naming.py`'s `SEMVER_RE`/`GUID_ROOT_RE`/`NAMESPACE_SEGMENT`, C# keyword set, and portable path-component rules intentionally mirror the generated scripts' `SEMVER`/`GUID_ROOT`/`NAMESPACE_SEGMENT`, C# keyword set, and `NAME_COMPONENT`. A generated project must never import bootstrapper code — its own `suite_metadata.py check`/`sync` is the only thing that validates its `suite.config.json` at runtime, and it must do so independently even after a maintainer hand-edits the file — so the copies are kept in sync by convention, not by a shared dependency. Update both together when either changes.
 
-`bootstrap/naming.py`'s `NAMESPACE_RE` (dot-separated C# identifier segments) has no counterpart in `suite_metadata.py`, which only requires `rootNamespace` to be a non-empty string; the stricter generation-time check is a UX guard, not a runtime invariant of the generated project.
+`suite_metadata.py` additionally enforces path-containment and archive-safety rules (`contain`, `package.py`'s `validate_arcname`) that have no bootstrapper-side counterpart, because the bootstrapper never re-derives filesystem paths from arbitrary post-generation edits the way the generated project's own `sync`/`package.py` must.
 
 ## Keeping `template/` generic
 

@@ -15,7 +15,7 @@ from pathlib import Path
 from unittest import mock
 
 from bootstrap.create_project import GenerationError, generate
-from bootstrap.model import ProjectParams, build_model
+from bootstrap.model import ModuleSpec, ProjectModel, ProjectParams, build_model
 from bootstrap.render import REQUIRED_TEMPLATE_FILES, RenderError, render_tree
 from tests.fixtures._helpers import copy_template_to_temp, expected_relpaths, generate_into_temp, make_params
 
@@ -194,7 +194,7 @@ class RenderDestinationSafetyTests(unittest.TestCase):
             author="A",
             thunderstore_namespace="NS",
         )
-        model = build_model(params)
+        model = ProjectModel(params, ModuleSpec("../../etc.Common", "common", "netstandard2.0", ""), None, None, None)
         output_dir = Path(tempfile.mkdtemp(prefix="valheimsuite-bootstrap-fixture-"))
 
         with self.assertRaises(RenderError):
