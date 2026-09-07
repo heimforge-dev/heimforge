@@ -3,6 +3,7 @@ import sys
 import unittest
 from pathlib import Path
 
+from bootstrap import naming
 from bootstrap.model import ProjectParams, build_model, suite_config_dict
 
 TEMPLATE_SCRIPTS = Path(__file__).resolve().parents[2] / "template" / "scripts"
@@ -71,9 +72,9 @@ class PackageDefinitionsTests(unittest.TestCase):
         self.assertIn("Vibeheim-ServerCore", names)
         self.assertIn("Vibeheim-Client", names)
 
-    def test_everything_omitted_produces_no_packages_at_all(self):
-        names = _definitions_for(include_server_core=False, include_client=False, include_shared_diagnostics=False)
-        self.assertEqual({}, names)
+    def test_everything_omitted_is_rejected_before_a_package_could_be_computed(self):
+        with self.assertRaises(naming.NamingError):
+            _definitions_for(include_server_core=False, include_client=False, include_shared_diagnostics=False)
 
 
 if __name__ == "__main__":

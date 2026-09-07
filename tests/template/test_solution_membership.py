@@ -294,10 +294,12 @@ class OptionalModuleMatrixSolutionMembershipTests(unittest.TestCase):
     """Section 18: every generated optional-module combination's
     `projects` must exactly match its own solution's project set."""
 
-    def test_all_eight_combinations_have_exact_solution_membership(self) -> None:
+    def test_all_seven_supported_combinations_have_exact_solution_membership(self) -> None:
         for server_core in (True, False):
             for client in (True, False):
                 for shared_diagnostics in (True, False):
+                    if not (server_core or client or shared_diagnostics):
+                        continue  # 000: no runtime module enabled -- rejected at bootstrap, covered separately.
                     with self.subTest(server_core=server_core, client=client, shared_diagnostics=shared_diagnostics):
                         _params, output_dir, result = generate_into_temp(
                             include_server_core=server_core,
@@ -591,6 +593,69 @@ class MalformedProjectHeaderRegressionTests(unittest.TestCase):
             self.skipTest("dotnet SDK not discoverable on PATH")
         sln_name = f"{self.cfg['rootNamespace']}.sln"
         proc = _run_combined(["dotnet", "sln", sln_name, "list"], self.output_dir)
+        self.assertNotEqual(0, proc.returncode, proc.stdout)
+
+
+class CommonOnlyRuntimeInvariantTests(unittest.TestCase):
+    """Section 18/23: a generated suite whose runtime projects are all
+    removed post-generation -- from `projects`, every package group, and
+    the `.sln` -- leaving only Common must be rejected by metadata
+    validation and every workflow that depends on it (sync, check,
+    package, deploy, preflight), not silently certified as a valid empty
+    mod suite."""
+
+    def setUp(self) -> None:
+        self.params, self.output_dir, result = generate_into_temp()
+        self.assertTrue(result.ok, result.errors)
+        self.cfg = _load_cfg(self.output_dir)
+
+    def _strip_to_common_only(self) -> None:
+        common = self.cfg["packages"]["commonModule"]
+        removed = [p for p in self.cfg["projects"] if p != common]
+        self.cfg["projects"] = {common: self.cfg["projects"][common]}
+        self.cfg["packages"] = {
+            "commonModule": common,
+            "serverModules": [],
+            "requiredClientModules": [],
+            "optionalClientModules": [],
+            "clientOnlyModules": [],
+        }
+        _save_cfg(self.output_dir, self.cfg)
+        for project in removed:
+            _remove_sln_entry(self.output_dir, self.cfg, project)
+
+    def test_sync_rejects_common_only_config(self) -> None:
+        self._strip_to_common_only()
+        proc = _run(["scripts/suite_metadata.py", "sync"], self.output_dir)
+        self.assertNotEqual(0, proc.returncode, proc.stdout)
+        self.assertIn("runtime", proc.stdout)
+
+    def test_check_rejects_common_only_config(self) -> None:
+        self._strip_to_common_only()
+        proc = _run(["scripts/suite_metadata.py", "check"], self.output_dir)
+        self.assertNotEqual(0, proc.returncode, proc.stdout)
+        self.assertIn("runtime", proc.stdout)
+
+    def test_package_rejects_before_writing_any_output(self) -> None:
+        self._strip_to_common_only()
+        proc = _run(["scripts/package.py"], self.output_dir)
+        self.assertNotEqual(0, proc.returncode, proc.stdout)
+        self.assertFalse((self.output_dir / "artifacts").exists())
+
+    def test_deploy_rejects_before_touching_destination(self) -> None:
+        self._strip_to_common_only()
+        write_dev_json(self.output_dir)
+        destination = Path(tempfile.mkdtemp(prefix="valheimsuite-common-only-deploy-"))
+        proc = _run_combined(
+            ["python3", "scripts/deploy.py", "--target", "server", "--destination", str(destination)],
+            self.output_dir,
+        )
+        self.assertNotEqual(0, proc.returncode, proc.stdout)
+        self.assertFalse(any(destination.iterdir()))
+
+    def test_preflight_portable_rejects_common_only_config(self) -> None:
+        self._strip_to_common_only()
+        proc = _run(["scripts/preflight.py", "--portable", "--json"], self.output_dir)
         self.assertNotEqual(0, proc.returncode, proc.stdout)
 
 

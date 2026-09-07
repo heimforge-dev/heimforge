@@ -6,6 +6,8 @@ Build a modular Valheim mod suite for a dedicated private server while preservin
 
 ## Runtime packages
 
+Initial generated module selection (bootstrap-time snapshot); `suite.config.json` plus the canonical `.sln` remain the machine-validated current structural authority. Update this list by hand after a later structural edit.
+
 {{INCLUDED_MODULES_LIST}}
 
 ## Development topology
@@ -41,11 +43,7 @@ Exact current versions are authoritative in `suite.config.json` (synchronized in
 
 ## Initial milestones
 
-0. Repository/harness scaffold.
-1. Runtime plugin shells and side boundaries.
-2. Shared Diagnostics CustomRPC proof.
-3. First real feature (see `docs/features/TEMPLATE.md`).
-4. Packaging/profile generation.
+{{INITIAL_MILESTONES_LIST}}
 
 ## Non-goals initially
 

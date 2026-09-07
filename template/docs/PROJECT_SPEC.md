@@ -92,11 +92,11 @@ Repository/harness scaffold, context, skills, extension, build scripts, dependen
 
 ### Milestone 1
 
-Common, ServerCore, Client, Shared.Diagnostics compile and load with correct side behavior.
+Every module generated in this repository compiles and loads with correct side behavior.
 
 ### Milestone 2
 
-Shared Diagnostics proves CustomRPC request/response, module/version reporting, and multiplayer plumbing without changing gameplay state.
+{{PROJECT_SPEC_MILESTONE2_BODY}}
 
 ### Milestone 3
 

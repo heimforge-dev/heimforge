@@ -29,7 +29,7 @@ Their content structurally depends on which optional modules (`ServerCore`, `Cli
 
 ## Generation pipeline
 
-1. `validate_params()` — reject malformed suite name, namespace, GUID root, author, Thunderstore namespace, or version.
+1. `validate_params()` — reject malformed suite name, namespace, GUID root, author, Thunderstore namespace, or version; `validate_params()` also calls `build_model()`, which rejects a selection with every optional module (`ServerCore`, `Client`, `Shared.Diagnostics`) disabled -- Common alone builds no runtime BepInEx plugin, so this fails before the approved destination is ever touched (see `docs/TEMPLATE_MAINTENANCE.md`'s "The empty-runtime invariant").
 2. Refuse an unsafe or non-empty output directory without `--force` (see `_safe_output_dir`/`_approve_destination` in `create_project.py`: rejects `/`, `$HOME`, the bootstrapper's own repository, and any ancestor of it).
 3. `validate_template()` — the source template must pass its own manifest/forbidden-content check before anything is rendered; a failure raises `GenerationError` before the approved destination is ever touched.
 4. `build_model()` — derive the concrete `ModuleSpec` set (`Common` always; `ServerCore`/`Client`/`Shared.Diagnostics` per include flags).

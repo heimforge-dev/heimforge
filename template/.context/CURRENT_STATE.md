@@ -1,3 +1,5 @@
+Note: the module list below reflects the initial scaffold selection made when this repository was generated. `suite.config.json` plus the canonical `.sln` remain the machine-validated current structural authority; if a later structural edit adds or removes a project, update this document by hand.
+
 ## Working
 
 - {{SUITE_NAME}} generated from ValheimSuite Bootstrap.
@@ -36,5 +38,4 @@
 Valheim: UNVERIFIED LOCALLY
 BepInExPack / Jötunn / Microsoft.NETFramework.ReferenceAssemblies: pins tracked in `suite.config.json`, not duplicated here
 Repository scaffold tests: PASS at generation time
-Server build: NOT RUN IN USER ENVIRONMENT
-Client build: NOT RUN IN USER ENVIRONMENT
+{{CURRENT_STATE_BUILD_STATUS_LINES}}

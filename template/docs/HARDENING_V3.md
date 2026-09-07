@@ -8,9 +8,7 @@ This hardening pass intentionally preserves the established runtime architecture
 - server-authoritative networking principles
 - Jötunn as the primary integration/network platform
 - no ServerSync without a concrete need
-- ServerCore `NotEnforced / None`
-- Client `NotEnforced / None`
-- Shared.Diagnostics `VersionCheckOnly / Minor`
+{{COMPATIBILITY_BOUNDARIES_LIST}}
 - WSL-first development topology
 - local assembly inspection before Harmony/game-internal assumptions
 - disposable-world and no-production-auto-deploy policies
@@ -32,12 +30,6 @@ This hardening pass intentionally preserves the established runtime architecture
 
 ## Still requires environment/runtime proof
 
-- full plugin build against the user's actual Valheim/Jötunn installation
-- Jötunn publicized-reference generation on the user's WSL/Windows setup
-- OMP extension loading/type compatibility against the installed OMP package
-- Valheim dedicated-server plugin load
-- client/server connection matrix
-- Shared Diagnostics CustomRPC behavior
-- any implemented feature's game-internal behavior and assumptions
+{{HARDENING_PENDING_PROOF_LIST}}
 
 No static scaffold can honestly guarantee those runtime facts before executing in the real environment.

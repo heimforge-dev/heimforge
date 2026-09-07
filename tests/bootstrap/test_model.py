@@ -65,7 +65,103 @@ class ModelTests(unittest.TestCase):
         self.assertNotIn("Client:", tokens["COMPATIBILITY_BOUNDARIES_LIST"])
         self.assertIn("ServerCore:", tokens["COMPATIBILITY_BOUNDARIES_LIST"])
 
+    def test_build_model_rejects_all_optional_modules_omitted(self):
+        with self.assertRaises(naming.NamingError) as ctx:
+            build_model(
+                make_params(include_server_core=False, include_client=False, include_shared_diagnostics=False)
+            )
+        self.assertIn("at least one runtime module", str(ctx.exception))
 
+    def test_validate_params_rejects_all_optional_modules_omitted(self):
+        with self.assertRaises(naming.NamingError):
+            validate_params(
+                make_params(include_server_core=False, include_client=False, include_shared_diagnostics=False)
+            )
+
+    def test_has_server_package_true_only_when_server_core_or_shared_diagnostics_present(self):
+        self.assertTrue(build_model(make_params(include_client=False, include_shared_diagnostics=False)).has_server_package)
+        self.assertTrue(build_model(make_params(include_server_core=False, include_client=False)).has_server_package)
+        self.assertFalse(build_model(make_params(include_server_core=False, include_shared_diagnostics=False)).has_server_package)
+
+    def test_has_client_package_true_only_when_client_or_shared_diagnostics_present(self):
+        self.assertTrue(build_model(make_params(include_server_core=False, include_shared_diagnostics=False)).has_client_package)
+        self.assertTrue(build_model(make_params(include_server_core=False, include_client=False)).has_client_package)
+        self.assertFalse(build_model(make_params(include_client=False, include_shared_diagnostics=False)).has_client_package)
+
+    def test_runtime_module_constraints_list_omits_excluded_module(self):
+        tokens = token_map(build_model(make_params(include_client=False)))
+        self.assertNotIn("Client must not require", tokens["RUNTIME_MODULE_CONSTRAINTS_LIST"])
+        self.assertIn("ServerCore must not require", tokens["RUNTIME_MODULE_CONSTRAINTS_LIST"])
+
+    def test_bootstrap_diagnostics_milestone_present_only_with_shared_diagnostics(self):
+        with_diag = token_map(build_model(make_params()))["BOOTSTRAP_DIAGNOSTICS_MILESTONE"]
+        without_diag = token_map(build_model(make_params(include_shared_diagnostics=False)))["BOOTSTRAP_DIAGNOSTICS_MILESTONE"]
+        self.assertIn("Milestone 2 diagnostics", with_diag)
+        self.assertEqual("", without_diag)
+
+    def test_bootstrap_milestones_proven_clause_reflects_diagnostics_presence(self):
+        self.assertIn("Milestones 0-2", token_map(build_model(make_params()))["BOOTSTRAP_MILESTONES_PROVEN_CLAUSE"])
+        without_diag = token_map(build_model(make_params(include_shared_diagnostics=False)))["BOOTSTRAP_MILESTONES_PROVEN_CLAUSE"]
+        self.assertIn("Milestones 0-1", without_diag)
+
+    def test_release_and_side_package_family_lists_match_package_definitions_gating(self):
+        model = build_model(make_params(include_server_core=False))
+        tokens = token_map(model)
+        self.assertNotIn("ServerCore", tokens["RELEASE_PACKAGE_FAMILIES_LIST"])
+        self.assertIn("ServerPack", tokens["RELEASE_PACKAGE_FAMILIES_LIST"])  # Shared.Diagnostics still reaches the server side
+        self.assertNotIn("ServerCore", tokens["SERVER_PACKAGE_FAMILY_LIST"])
+        self.assertIn("ServerPack", tokens["SERVER_PACKAGE_FAMILY_LIST"])
+
+    def test_side_package_family_list_empty_when_that_side_has_no_package(self):
+        client_only = build_model(make_params(include_server_core=False, include_shared_diagnostics=False))
+        server_only = build_model(make_params(include_client=False, include_shared_diagnostics=False))
+        self.assertEqual("", token_map(client_only)["SERVER_PACKAGE_FAMILY_LIST"])
+        self.assertEqual("", token_map(server_only)["CLIENT_PACKAGE_FAMILY_LIST"])
+
+    def test_initial_milestones_list_renumbers_when_diagnostics_omitted(self):
+        with_diag = token_map(build_model(make_params()))["INITIAL_MILESTONES_LIST"]
+        without_diag = token_map(build_model(make_params(include_shared_diagnostics=False)))["INITIAL_MILESTONES_LIST"]
+        self.assertIn("2. Shared Diagnostics CustomRPC proof.", with_diag)
+        self.assertNotIn("Shared Diagnostics", without_diag)
+        self.assertIn("2. First real feature", without_diag)
+
+    def test_current_state_build_status_lines_omit_absent_package_side(self):
+        client_only = build_model(make_params(include_server_core=False, include_shared_diagnostics=False))
+        lines = token_map(client_only)["CURRENT_STATE_BUILD_STATUS_LINES"]
+        self.assertNotIn("Server build", lines)
+        self.assertIn("Client build", lines)
+
+    def test_project_spec_milestone2_body_reflects_diagnostics_presence(self):
+        self.assertIn("CustomRPC", token_map(build_model(make_params()))["PROJECT_SPEC_MILESTONE2_BODY"])
+        without_diag = token_map(build_model(make_params(include_shared_diagnostics=False)))["PROJECT_SPEC_MILESTONE2_BODY"]
+        self.assertIn("Not applicable", without_diag)
+
+    def test_pending_proof_lists_omit_diagnostics_line_when_absent(self):
+        without_diag = build_model(make_params(include_shared_diagnostics=False))
+        tokens = token_map(without_diag)
+        self.assertNotIn("Shared Diagnostics", tokens["PENDING_RUNTIME_PROOF_LIST"])
+        self.assertNotIn("Shared Diagnostics", tokens["HARDENING_PENDING_PROOF_LIST"])
+        self.assertIn("Shared Diagnostics", token_map(build_model(make_params()))["PENDING_RUNTIME_PROOF_LIST"])
+
+    def test_deploy_side_notes_name_exactly_the_modules_that_side_receives(self):
+        server_core_and_diagnostics = token_map(
+            build_model(make_params(include_client=False))
+        )["DEPLOY_SIDE_NOTES_LIST"]
+        self.assertIn("Server receives Common + ServerCore + Shared.Diagnostics.", server_core_and_diagnostics)
+        self.assertIn("Client receives Common + Shared.Diagnostics.", server_core_and_diagnostics)
+        self.assertNotIn("Client receives Common + Shared.Diagnostics + Client", server_core_and_diagnostics)
+
+        client_and_diagnostics = token_map(
+            build_model(make_params(include_server_core=False))
+        )["DEPLOY_SIDE_NOTES_LIST"]
+        self.assertIn("Server receives Common + Shared.Diagnostics.", client_and_diagnostics)
+        self.assertIn("Client receives Common + Client + Shared.Diagnostics.", client_and_diagnostics)
+        self.assertNotIn("ServerCore", client_and_diagnostics)
+
+        server_core_only = token_map(
+            build_model(make_params(include_client=False, include_shared_diagnostics=False))
+        )["DEPLOY_SIDE_NOTES_LIST"]
+        self.assertEqual("Server receives Common + ServerCore.", server_core_only)
 
     def test_derived_project_names_reject_reserved_device_roots(self):
         for namespace in ("CON", "COM1", "LPT9", "NUL"):

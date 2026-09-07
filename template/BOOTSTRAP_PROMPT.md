@@ -24,9 +24,7 @@ Do not redesign the high-confidence foundation during bootstrap:
 - WSL/Linux is canonical for repo/harness/build/test/package/server tooling.
 - Windows Valheim is the actual client runtime and is accessed through `/mnt/c/...`.
 - Runtime topology is Common + ServerCore + independent Shared modules + Client. Any of ServerCore, Client, or a Shared.* module may be absent in this repository; `suite.config.json`'s `projects` is authoritative for what was generated, and must always exactly match `<RootNamespace>.sln`'s real project membership.
-- ServerCore remains `NotEnforced / None`.
-- Client remains `NotEnforced / None`.
-- Shared.Diagnostics remains `VersionCheckOnly / Minor` until a concrete reason changes it.
+{{COMPATIBILITY_BOUNDARIES_LIST}}
 - Jötunn is the common modding/network platform; ServerSync is not added without a demonstrated need.
 - `suite.config.json` is the editable source of truth for supported mutable suite/project/package metadata. Generation-time suite identity (`suiteName`, `rootNamespace`) is locked in `suite.identity.lock.json` and cannot be changed by editing `suite.config.json`.
 - `scripts/deploy.py` is the single deployment implementation for both Bash and the OMP extension.
@@ -74,36 +72,17 @@ Confirm that:
 
 Complete and validate every module generated in this repository (per `suite.config.json`), for example:
 
-- `{{ROOT_NAMESPACE}}.Common`
-- `{{ROOT_NAMESPACE}}.ServerCore`
-- `{{ROOT_NAMESPACE}}.Client`
-- `{{ROOT_NAMESPACE}}.Shared.Diagnostics`
+{{INCLUDED_MODULES_LIST}}
 
 Each plugin must build and load in its intended environment.
 
 Implement robust runtime-side detection only after confirming current Valheim/Jötunn APIs from local assemblies or current docs. Do not guess signatures.
 
-ServerCore must not require clients to install it.
-Client must not require servers to install it.
-Shared Diagnostics must be safe on both sides and must not alter persistent gameplay state.
-
-## Milestone 2 diagnostics
-
-After Milestones 0 and 1 build/load cleanly, implement a minimal Jötunn CustomRPC diagnostic exchange proving:
-
-- client-to-server registration
-- server-side sender handling
-- server-to-client response
-- suite version reporting
-- module/protocol reporting
-- bounded useful logging
-- no persistent gameplay mutation
-
-Consult current Jötunn RPC documentation or Context7 and verify exact signatures before coding.
-
+{{RUNTIME_MODULE_CONSTRAINTS_LIST}}
+{{BOOTSTRAP_DIAGNOSTICS_MILESTONE}}
 ## First real feature
 
-After Milestones 0-2 are proven (scaffold validated, plugins build/load correctly, Shared Diagnostics proves the CustomRPC/versioning plumbing), do not invent further built-in gameplay features in this generic scaffold.
+After {{BOOTSTRAP_MILESTONES_PROVEN_CLAUSE}}, do not invent further built-in gameplay features in this generic scaffold.
 
 Define the project's first real feature using `docs/features/TEMPLATE.md`:
 

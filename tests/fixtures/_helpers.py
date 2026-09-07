@@ -88,13 +88,17 @@ def expected_relpaths(
     from bootstrap.template_manifest import OPTIONAL_TEMPLATE_FILES, REQUIRED_TEMPLATE_FILES
 
     expected = {rel.replace("__ROOT_NAMESPACE__", root_namespace) for rel in REQUIRED_TEMPLATE_FILES}
-    for included, module in (
+    has_server_package = server_core or shared_diagnostics
+    has_client_package = client or shared_diagnostics
+    for included, group in (
         (server_core, "server_core"),
         (client, "client"),
         (shared_diagnostics, "shared_diagnostics"),
+        (has_server_package, "server_package_docs"),
+        (has_client_package, "client_package_docs"),
     ):
         if included:
-            expected |= {rel.replace("__ROOT_NAMESPACE__", root_namespace) for rel in OPTIONAL_TEMPLATE_FILES[module]}
+            expected |= {rel.replace("__ROOT_NAMESPACE__", root_namespace) for rel in OPTIONAL_TEMPLATE_FILES[group]}
     expected |= {
         "suite.config.json",
         "suite.identity.lock.json",

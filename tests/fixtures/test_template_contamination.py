@@ -14,7 +14,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from bootstrap.create_project import GenerationError, generate
+from bootstrap import naming
+from bootstrap.create_project import GenerationError, generate, main
 from bootstrap.model import ModuleSpec, ProjectModel, ProjectParams, build_model
 from bootstrap.render import REQUIRED_TEMPLATE_FILES, RenderError, render_tree
 from tests.fixtures._helpers import copy_template_to_temp, expected_relpaths, generate_into_temp, make_params
@@ -275,10 +276,12 @@ class NormalGenerationSurfaceTests(unittest.TestCase):
         actual = {str(p.relative_to(output_dir)) for p in output_dir.rglob("*") if p.is_file()}
         self.assertEqual(expected_relpaths(params.root_namespace), actual)
 
-    def test_all_eight_optional_module_combinations_generate_the_correct_manifest_subset(self):
+    def test_all_seven_supported_optional_module_combinations_generate_the_correct_manifest_subset(self):
         for server_core in (True, False):
             for client in (True, False):
                 for shared_diagnostics in (True, False):
+                    if not (server_core or client or shared_diagnostics):
+                        continue  # 000: no runtime module enabled -- rejected at bootstrap, covered separately.
                     with self.subTest(server_core=server_core, client=client, shared_diagnostics=shared_diagnostics):
                         params, output_dir, result = generate_into_temp(
                             include_server_core=server_core,
@@ -295,6 +298,50 @@ class NormalGenerationSurfaceTests(unittest.TestCase):
                             shared_diagnostics=shared_diagnostics,
                         )
                         self.assertEqual(expected, actual)
+
+
+class EmptyRuntimeRejectionTests(unittest.TestCase):
+    """Section 1/2: a bootstrap configuration with every optional runtime
+    module disabled (000) must be rejected during model validation, before
+    the output directory is ever created or mutated -- `--force` must not
+    change that."""
+
+    def test_all_modules_omitted_is_rejected_before_any_mutation(self):
+        params = make_params(include_server_core=False, include_client=False, include_shared_diagnostics=False)
+        output_dir = Path(tempfile.mkdtemp(prefix="valheimsuite-empty-runtime-"))
+        shutil.rmtree(output_dir)
+
+        with self.assertRaises(naming.NamingError) as ctx:
+            generate(params, output_dir)
+        self.assertIn("at least one runtime module", str(ctx.exception))
+        self.assertFalse(output_dir.exists())
+
+    def test_force_does_not_bypass_the_empty_runtime_rejection(self):
+        params = make_params(include_server_core=False, include_client=False, include_shared_diagnostics=False)
+        output_dir = Path(tempfile.mkdtemp(prefix="valheimsuite-empty-runtime-force-"))
+        shutil.rmtree(output_dir)
+
+        with self.assertRaises(naming.NamingError):
+            generate(params, output_dir, force=True)
+        self.assertFalse(output_dir.exists())
+
+    def test_cli_rejects_all_modules_omitted_before_any_mutation(self):
+        output_dir = Path(tempfile.mkdtemp(prefix="valheimsuite-empty-runtime-cli-"))
+        shutil.rmtree(output_dir)
+        argv = [
+            "--name", "Sampleheim",
+            "--guid", "org.example-tests.sampleheim",
+            "--author", "Sample Author",
+            "--thunderstore-namespace", "SampleNS",
+            "--output", str(output_dir),
+            "--no-server-core",
+            "--no-client",
+            "--no-shared-diagnostics",
+            "--force",
+        ]
+        returncode = main(argv)
+        self.assertEqual(2, returncode)
+        self.assertFalse(output_dir.exists())
 
 
 if __name__ == "__main__":

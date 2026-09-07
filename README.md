@@ -53,7 +53,7 @@ Prompts for suite name, root namespace, plugin GUID root, author, Thunderstore n
   --output ~/src/vibeheim
 ```
 
-Add `--no-server-core`, `--no-client`, or `--no-shared-diagnostics` to omit an optional module. Add `--force` to overwrite a non-empty output directory (refused for the bootstrapper's own repository, its ancestors, `/`, and `$HOME`).
+Add `--no-server-core`, `--no-client`, or `--no-shared-diagnostics` to omit an optional module. Combining all three is rejected: `Common` is a shared library, not a runtime plugin, and at least one runtime module is required. Add `--force` to overwrite a non-empty output directory (refused for the bootstrapper's own repository, its ancestors, `/`, and `$HOME`).
 
 ## Generated-project first steps
 

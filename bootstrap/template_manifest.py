@@ -64,9 +64,7 @@ REQUIRED_TEMPLATE_FILES: frozenset[str] = frozenset(
         "docs/persistence.md",
         "docs/release.md",
         "docs/testing.md",
-        "packaging/client/README.md",
         "packaging/profiles/README.md",
-        "packaging/server/README.md",
         "packaging/shared/README.md",
         "scripts/bootstrap.sh",
         "scripts/build.sh",
@@ -91,11 +89,15 @@ REQUIRED_TEMPLATE_FILES: frozenset[str] = frozenset(
     }
 )
 
-# Rendered only when the matching `ProjectModel` optional module attribute
-# (`server_core`, `client`, `shared_diagnostics`) is present. See
-# `bootstrap/render.py`'s `OPTIONAL_MODULE_PRESENT` for how a `ProjectModel`
-# resolves to these keys, and `docs/TEMPLATE_MAINTENANCE.md` for how to add
-# a new optional module.
+# Rendered only when the matching `ProjectModel`/manifest predicate in
+# `bootstrap/render.py`'s `OPTIONAL_GROUP_PRESENT` is satisfied: the three
+# module-source groups (`server_core`, `client`, `shared_diagnostics`) gate on
+# the matching optional module being present, and the two package-side doc
+# groups (`server_package_docs`, `client_package_docs`) gate on
+# `ProjectModel.has_server_package`/`has_client_package` -- whether that side
+# actually has at least one package family to document. See
+# `docs/TEMPLATE_MAINTENANCE.md` for how to add a new optional module or
+# optional documentation group.
 OPTIONAL_TEMPLATE_FILES: dict[str, frozenset[str]] = {
     "server_core": frozenset(
         {
@@ -117,6 +119,8 @@ OPTIONAL_TEMPLATE_FILES: dict[str, frozenset[str]] = {
             "src/__ROOT_NAMESPACE__.Shared.Diagnostics/__ROOT_NAMESPACE__.Shared.Diagnostics.csproj",
         }
     ),
+    "server_package_docs": frozenset({"packaging/server/README.md"}),
+    "client_package_docs": frozenset({"packaging/client/README.md"}),
 }
 
 

@@ -89,6 +89,20 @@ def modules_for(cfg: dict, target: str) -> list[str]:
     return ordered
 
 
+def side_has_runtime_module(cfg: dict, target: str) -> bool:
+    """Whether at least one non-`common` project actually targets `target`,
+    derived from the same validated `packages` groups `modules_for()`
+    reads -- current metadata, not bootstrap-time module identity, so this
+    stays correct after a supported post-generation structural edit
+    (custom `serverOnly`/`clientOnly`/`sharedRequired`/`sharedOptional`
+    project added or removed). Common alone never satisfies this: it is a
+    shared library other plugins reference, not itself a runtime plugin."""
+    packages = cfg["packages"]
+    if target == "server":
+        return bool(packages["serverModules"])
+    return bool(packages["requiredClientModules"] or packages["optionalClientModules"] or packages["clientOnlyModules"])
+
+
 def open_deployment_dir(destination: Path) -> int:
     """Open the validated deployment directory once, without following a
     symlinked final path component, for every stale-cleanup and DLL write
@@ -287,6 +301,12 @@ def main() -> int:
                     f"generated metadata is stale: {generated_path.relative_to(ROOT)}; "
                     "run python3 scripts/suite_metadata.py sync"
                 )
+        if not side_has_runtime_module(cfg, args.target):
+            raise DeployError(
+                f"no runtime module targets the {args.target} side; Common alone is a shared library, "
+                "not a runtime BepInEx plugin, and deploying only Common would create an ownership "
+                f"manifest for a {args.target} side with nothing to load"
+            )
         dev_path = ROOT / ".valheim" / "dev.json"
         dev = load_json(dev_path)
         if dev.get("schemaVersion") != 1:

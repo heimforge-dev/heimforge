@@ -8,11 +8,7 @@ Package membership comes from `suite.config.json`, not filename globs.
 
 Current generated package families:
 
-- ServerCore
-- Client
-- one ZIP per Shared Module
-- ServerPack
-- ClientPack
+{{RELEASE_PACKAGE_FAMILIES_LIST}}
 
 The ZIP layout installs DLLs under `BepInEx/plugins/<SuiteName>/` and includes `package-info.json`, README, and changelog.
 

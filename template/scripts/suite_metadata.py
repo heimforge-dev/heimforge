@@ -475,6 +475,18 @@ def validate(cfg: dict, release: bool = False) -> None:
                 problems.append(f"must not appear in {' and '.join(extra)}")
             raise MetadataError(f"project {project} with scope {scope} " + "; ".join(problems))
 
+    # A suite with only `common`-scope projects builds no runtime BepInEx
+    # plugin at all -- Common is a shared library other plugins reference,
+    # not itself a plugin. `projects` can legitimately gain/lose entries
+    # after generation (see the module-membership contract above), so this
+    # is re-checked here rather than only once at bootstrap time.
+    if all(item["scope"] == "common" for item in projects.values()):
+        raise MetadataError(
+            "at least one configured project must have a runtime scope other than common "
+            "(serverOnly, clientOnly, sharedOptional, or sharedRequired); a suite with only "
+            "common-scope projects produces no runtime BepInEx plugin"
+        )
+
     for project, item in projects.items():
         csproj = ROOT / "src" / project / f"{project}.csproj"
         if not csproj.exists():

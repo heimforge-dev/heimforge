@@ -45,7 +45,15 @@ from .template_manifest import (
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_DIR = ROOT / "template"
 
-TOKEN_RE = re.compile(r"\{\{([A-Z_]+)\}\}")
+# First character alphabetic/underscore (matches every current token's
+# convention), remaining characters may also be digits -- e.g.
+# `PROJECT_SPEC_MILESTONE2_BODY`. This single regex backs template token
+# discovery, substitution, `validate_template()`'s known-token check, and
+# `validate_generated.py`'s unresolved-token detection (which imports this
+# exact pattern) -- one definition so the renderer can never recognize a
+# token name unresolved-token validation would fail to recognize, or vice
+# versa.
+TOKEN_RE = re.compile(r"\{\{([A-Z_][A-Z0-9_]*)\}\}")
 KNOWN_TOKENS = {
     "SUITE_NAME",
     "ROOT_NAMESPACE",
@@ -56,6 +64,20 @@ KNOWN_TOKENS = {
     "MODULE_CATALOG_ROWS",
     "INCLUDED_MODULES_LIST",
     "COMPATIBILITY_BOUNDARIES_LIST",
+    "RUNTIME_MODULE_CONSTRAINTS_LIST",
+    "BOOTSTRAP_DIAGNOSTICS_MILESTONE",
+    "BOOTSTRAP_MILESTONES_PROVEN_CLAUSE",
+    "RELEASE_PACKAGE_FAMILIES_LIST",
+    "SERVER_PACKAGE_FAMILY_LIST",
+    "CLIENT_PACKAGE_FAMILY_LIST",
+    "PENDING_RUNTIME_PROOF_LIST",
+    "HARDENING_PENDING_PROOF_LIST",
+    "PROJECT_SPEC_MILESTONE2_BODY",
+    "INITIAL_MILESTONES_LIST",
+    "CURRENT_STATE_BUILD_STATUS_LINES",
+    "DEPLOY_TOPOLOGY_LINES",
+    "DEPLOY_COMMANDS_LIST",
+    "DEPLOY_SIDE_NOTES_LIST",
 }
 
 
@@ -69,21 +91,28 @@ class TemplateSourceError(OSError):
     a symlinked parent directory) was substituted for it."""
 
 
-# Which `ProjectModel` attribute gates each `template_manifest.OPTIONAL_TEMPLATE_FILES` key.
-OPTIONAL_MODULE_PRESENT = {
+# Which `ProjectModel` predicate gates each `template_manifest.OPTIONAL_TEMPLATE_FILES`
+# key -- the three module-source groups plus the two package-side doc groups
+# (`server_package_docs`/`client_package_docs`), derived from the same
+# `has_server_package`/`has_client_package` model properties that drive
+# `packaging/server/README.md`'s and `packaging/client/README.md`'s own content.
+OPTIONAL_GROUP_PRESENT = {
     "server_core": lambda m: m.server_core is not None,
     "client": lambda m: m.client is not None,
     "shared_diagnostics": lambda m: m.shared_diagnostics is not None,
+    "server_package_docs": lambda m: m.has_server_package,
+    "client_package_docs": lambda m: m.has_client_package,
 }
 
 
 def _manifest_files_for(model: ProjectModel) -> frozenset[str]:
     """The manifest-approved paths to render for this specific model:
-    everything required, plus each optional module's files iff included."""
+    everything required, plus each optional group's files iff its
+    predicate is satisfied."""
     files = set(REQUIRED_TEMPLATE_FILES)
-    for module, present in OPTIONAL_MODULE_PRESENT.items():
+    for group, present in OPTIONAL_GROUP_PRESENT.items():
         if present(model):
-            files |= OPTIONAL_TEMPLATE_FILES[module]
+            files |= OPTIONAL_TEMPLATE_FILES[group]
     return frozenset(files)
 
 

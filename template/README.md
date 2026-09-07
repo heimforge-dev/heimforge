@@ -13,8 +13,7 @@ WSL repository + OMP/Pi + dotnet + Docker tooling
         |
         +-- build/test/package in WSL
         +-- inspect Windows Valheim files through /mnt/c/...
-        +-- deploy client DLLs to Windows Valheim through /mnt/c/...
-        +-- deploy server DLLs to the Linux/Docker dedicated server
+{{DEPLOY_TOPOLOGY_LINES}}
 ```
 
 Keep the repository in the WSL filesystem, for example `~/src/{{ROOT_NAMESPACE_LOWER}}`, rather than under `/mnt/c`.
@@ -23,7 +22,9 @@ Windows remains the real Valheim client runtime. Bash scripts are authoritative.
 
 ## Runtime topology
 
-Only the modules actually generated in this repository are listed; `suite.config.json` is authoritative.
+This list reflects the initial scaffold selection made when this repository was generated; `suite.config.json` plus the canonical `<RootNamespace>.sln` remain the machine-validated current structural authority afterward (see "Hardened metadata model" below). If a later structural edit adds or removes a project, update this list and `docs/module-catalog.md` by hand.
+
+`Common` is a shared library other plugins reference, not itself a runtime BepInEx plugin. `ServerCore`, `Client`, and `Shared.Diagnostics` may each be individually omitted, but at least one of the three must be enabled -- a generation request disabling all three is rejected before this repository is created.
 
 {{INCLUDED_MODULES_LIST}}
 
@@ -98,12 +99,10 @@ Then run:
 Both Bash deployment and OMP deployment use the same metadata-driven `scripts/deploy.py` implementation.
 
 ```bash
-./scripts/deploy-client.sh Debug
-./scripts/deploy-server.sh Debug
+{{DEPLOY_COMMANDS_LIST}}
 ```
 
-Client receives only Common + Shared client modules + Client.
-Server receives only Common + ServerCore + Shared server modules.
+{{DEPLOY_SIDE_NOTES_LIST}}
 
 No glob-based side classification is used.
 
@@ -163,9 +162,4 @@ The hardened scaffold includes automated checks for:
 
 What still requires the user's machine:
 
-- full Jötunn/Valheim plugin compilation
-- OMP extension load against the installed OMP package
-- dedicated-server plugin load
-- actual multiplayer compatibility behavior
-- Shared Diagnostics RPC implementation/runtime proof
-- any implemented feature's game-internal behavior, once a feature is chosen and built
+{{PENDING_RUNTIME_PROOF_LIST}}

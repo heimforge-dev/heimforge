@@ -23,6 +23,7 @@ Safety/consistency properties:
 - Deployment delegates to the same `scripts/deploy.py` used by Bash scripts, so client/server module classification has one implementation.
 - Client deployment is metadata-driven and can never include a `serverOnly` project while `suite.config.json` remains valid.
 - Server deployment is metadata-driven and can never include a `clientOnly` project while `suite.config.json` remains valid.
+- A target side with no runtime module (e.g. requesting client deployment on a ServerCore-only suite) is rejected before the destination is touched -- `Common` alone is a shared library, not a runtime plugin.
 - Assembly inspection is restricted to files under the configured `valheim_Data/Managed` directory.
 - Server log access accepts only a configured log file or a fixed `docker compose logs` invocation. Arbitrary configured shell commands are not supported.
 - Child processes use argument arrays rather than shell interpolation and receive the OMP cancellation signal.

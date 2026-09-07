@@ -263,9 +263,17 @@ class ManifestIndependentSanityTests(unittest.TestCase):
         "server_core": frozenset({"src/__ROOT_NAMESPACE__.ServerCore/Plugin.cs"}),
         "client": frozenset({"src/__ROOT_NAMESPACE__.Client/Plugin.cs"}),
         "shared_diagnostics": frozenset({"src/__ROOT_NAMESPACE__.Shared.Diagnostics/Plugin.cs"}),
+        "server_package_docs": frozenset({"packaging/server/README.md"}),
+        "client_package_docs": frozenset({"packaging/client/README.md"}),
     }
-    _EXPECTED_REQUIRED_COUNT = 67
-    _EXPECTED_OPTIONAL_COUNTS = {"server_core": 4, "client": 2, "shared_diagnostics": 2}
+    _EXPECTED_REQUIRED_COUNT = 65
+    _EXPECTED_OPTIONAL_COUNTS = {
+        "server_core": 4,
+        "client": 2,
+        "shared_diagnostics": 2,
+        "server_package_docs": 1,
+        "client_package_docs": 1,
+    }
 
     def test_curated_required_paths_are_present_in_manifest_and_on_disk(self):
         for path in self._CURATED_REQUIRED_PATHS:
