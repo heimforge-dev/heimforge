@@ -72,6 +72,14 @@ _RESERVED_DEVICE_NAMES = {
     *(f"LPT{d}" for d in "123456789"),
 }
 
+# scripts/deploy.py's deployment manifest filename is
+# f".{suiteName}.deploy-manifest.json" -- 1 leading dot + suiteName + the
+# 21-character ".deploy-manifest.json" suffix. Bounding suiteName at 233
+# ASCII bytes keeps that rendered filename at exactly 255 bytes, the
+# common POSIX/NTFS single-path-component limit, so deployment never
+# discovers an oversized suiteName as a late ENAMETOOLONG failure.
+MAX_SUITE_NAME_LENGTH = 233
+
 # A single dot-separated C# namespace segment: must be usable as an
 # ordinary, unescaped C# identifier.
 NAMESPACE_SEGMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\Z")
@@ -285,7 +293,12 @@ def validate(cfg: dict, release: bool = False) -> None:
     if cfg.get("schemaVersion") != 1:
         raise MetadataError("schemaVersion must currently be 1")
 
-    validate_path_component(require_string(cfg, "suiteName"), "suiteName")
+    suite_name = validate_path_component(require_string(cfg, "suiteName"), "suiteName")
+    if len(suite_name) > MAX_SUITE_NAME_LENGTH:
+        raise MetadataError(
+            f"suiteName must be at most {MAX_SUITE_NAME_LENGTH} characters so the deployment manifest "
+            f"filename stays within common filesystem limits (got {len(suite_name)})"
+        )
     validate_namespace(require_string(cfg, "rootNamespace"), "rootNamespace")
     guid_root = require_string(cfg, "pluginGuidRoot")
     author = validate_label(cfg, "author")

@@ -8,15 +8,18 @@ independence from the bootstrapper is proven by construction.
 from __future__ import annotations
 
 import importlib
+import json
 import shutil
+import subprocess
 import sys
 import tempfile
+import unittest
 from pathlib import Path
 
 from bootstrap.create_project import generate
 from bootstrap.model import ProjectParams
 from bootstrap.render import TEMPLATE_DIR
-from bootstrap.validate_generated import ValidationResult
+from bootstrap.validate_generated import NO_BYTECODE_ENV, ValidationResult
 
 
 def make_params(**overrides) -> ProjectParams:
@@ -100,3 +103,78 @@ def expected_relpaths(
         "packaging/profile-lock.json",
     }
     return expected
+
+
+def write_dev_json(output_dir: Path, *, client_plugin_dir: str | None = None, server_plugin_dir: str | None = None) -> None:
+    dev_dir = output_dir / ".valheim"
+    dev_dir.mkdir(parents=True, exist_ok=True)
+    payload = {"schemaVersion": 1, "developmentOnly": True}
+    if client_plugin_dir is not None:
+        payload["clientPluginDir"] = client_plugin_dir
+    if server_plugin_dir is not None:
+        payload["serverPluginDir"] = server_plugin_dir
+    (dev_dir / "dev.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
+def write_fake_artifacts(output_dir: Path, cfg: dict, configuration: str = "Debug") -> dict[str, bytes]:
+    contents: dict[str, bytes] = {}
+    for project, item in cfg["projects"].items():
+        payload = f"{project}-build-output".encode()
+        dll = output_dir / "src" / project / "bin" / configuration / item["targetFramework"] / f"{project}.dll"
+        dll.parent.mkdir(parents=True, exist_ok=True)
+        dll.write_bytes(payload)
+        contents[project] = payload
+    return contents
+
+
+def run_deploy(output_dir: Path, target: str, destination: Path | None = None, configuration: str = "Debug") -> subprocess.CompletedProcess:
+    argv = ["python3", "scripts/deploy.py", "--target", target, "--configuration", configuration]
+    if destination is not None:
+        argv += ["--destination", str(destination)]
+    return subprocess.run(
+        argv,
+        cwd=output_dir,
+        env=NO_BYTECODE_ENV,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+
+def import_deploy_from(scripts_dir: Path):
+    """Import a fresh `deploy` module from `scripts_dir`, so `ROOT` inside
+    resolves to the disposable generated project, never the live template."""
+    sys.path.insert(0, str(scripts_dir))
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        sys.modules.pop("deploy", None)
+        sys.modules.pop("suite_metadata", None)
+        import deploy as dm
+
+        importlib.reload(dm)
+        return dm
+    finally:
+        sys.dont_write_bytecode = previous
+        sys.path.remove(str(scripts_dir))
+
+
+class DeployFixtureTestCase(unittest.TestCase):
+    """Base fixture for deploy.py tests: a fully generated temp project with
+    fake build artifacts, ready to deploy into a disposable destination.
+    Subclasses needing a non-default suite identity (e.g. reproducing an
+    issue tied to a specific namespace) set `generate_overrides`."""
+
+    generate_overrides: dict = {}
+
+    def setUp(self) -> None:
+        self.params, self.output_dir, result = generate_into_temp(**self.generate_overrides)
+        self.assertTrue(result.ok, result.errors)
+        self.cfg = json.loads((self.output_dir / "suite.config.json").read_text(encoding="utf-8"))
+        write_dev_json(self.output_dir)
+        self.artifact_bytes = write_fake_artifacts(self.output_dir, self.cfg)
+        self.common = self.cfg["packages"]["commonModule"]
+        self.server_modules = [self.common] + self.cfg["packages"]["serverModules"]
+
+    def _dest_dir(self) -> Path:
+        return Path(tempfile.mkdtemp(prefix="valheimsuite-deploy-dest-"))

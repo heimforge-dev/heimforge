@@ -36,6 +36,11 @@ class ProjectParams:
 
 def validate_params(p: ProjectParams) -> None:
     naming.validate_path_component(p.suite_name, "suiteName")
+    if len(p.suite_name) > naming.MAX_SUITE_NAME_LENGTH:
+        raise naming.NamingError(
+            f"suiteName must be at most {naming.MAX_SUITE_NAME_LENGTH} characters so the deployment "
+            f"manifest filename stays within common filesystem limits (got {len(p.suite_name)})"
+        )
     naming.validate_namespace(p.root_namespace, "rootNamespace")
     naming.validate_guid_root(p.plugin_guid_root)
     naming.validate_label(p.author, "author")

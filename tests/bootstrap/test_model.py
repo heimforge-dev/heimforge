@@ -99,6 +99,17 @@ class ModelTests(unittest.TestCase):
     def test_validate_params_accepts_valid_build_metadata_semver(self):
         validate_params(make_params(suite_version="1.2.3-alpha+build.1"))
 
+    def test_validate_params_accepts_suite_name_at_max_length(self):
+        """template/scripts/deploy.py's deployment manifest filename is
+        f".{suiteName}.deploy-manifest.json"; naming.MAX_SUITE_NAME_LENGTH
+        is exactly the longest suiteName that keeps that filename within
+        the common 255-byte filesystem component limit."""
+        validate_params(make_params(suite_name="S" * naming.MAX_SUITE_NAME_LENGTH))
+
+    def test_validate_params_rejects_suite_name_over_max_length(self):
+        with self.assertRaises(naming.NamingError):
+            validate_params(make_params(suite_name="S" * (naming.MAX_SUITE_NAME_LENGTH + 1)))
+
 
 if __name__ == "__main__":
     unittest.main()

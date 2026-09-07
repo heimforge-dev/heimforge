@@ -308,6 +308,38 @@ class BootstrapGeneratedGrammarAlignmentTests(unittest.TestCase):
                 self.assertEqual(expected_ok, generated_ok)
 
 
+class SuiteNameLengthAlignmentTests(unittest.TestCase):
+    """Item 5: scripts/deploy.py's deployment manifest filename embeds
+    suiteName; the bootstrap-time and generated-project-time validators
+    must agree on the same maximum length, so an oversized suiteName is
+    always rejected at generation and never discovered later as a raw
+    ENAMETOOLONG failure from deploy.py."""
+
+    def setUp(self):
+        scripts_dir = copy_template_to_temp() / "scripts"
+        self.metadata, _pkg = import_scripts_from(scripts_dir)
+
+    def test_constants_agree(self):
+        self.assertEqual(naming.MAX_SUITE_NAME_LENGTH, self.metadata.MAX_SUITE_NAME_LENGTH)
+
+    def test_generated_validator_accepts_suite_name_at_max_length(self):
+        _params, output_dir, result = generate_into_temp()
+        self.assertTrue(result.ok, result.errors)
+        metadata, _pkg = import_scripts_from(output_dir / "scripts")
+        cfg = json.loads((output_dir / "suite.config.json").read_text(encoding="utf-8"))
+        cfg["suiteName"] = "S" * metadata.MAX_SUITE_NAME_LENGTH
+        metadata.validate(cfg)
+
+    def test_generated_validator_rejects_suite_name_over_max_length(self):
+        _params, output_dir, result = generate_into_temp()
+        self.assertTrue(result.ok, result.errors)
+        metadata, _pkg = import_scripts_from(output_dir / "scripts")
+        cfg = json.loads((output_dir / "suite.config.json").read_text(encoding="utf-8"))
+        cfg["suiteName"] = "S" * (metadata.MAX_SUITE_NAME_LENGTH + 1)
+        with self.assertRaises(metadata.MetadataError):
+            metadata.validate(cfg)
+
+
 class ReleaseGateTests(unittest.TestCase):
     """Item 9: `check --release` must reject invalid release metadata --
     reproducing the exact audit cases -- and accept representative valid

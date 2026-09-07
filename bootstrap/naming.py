@@ -21,6 +21,14 @@ NAMESPACE_RE = re.compile(rf"^{NAMESPACE_SEGMENT}(?:\.{NAMESPACE_SEGMENT})*\Z")
 GUID_ROOT_RE = re.compile(r"^[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)+\Z")
 NAME_COMPONENT_RE = re.compile(r"^[A-Za-z0-9_](?:[A-Za-z0-9._-]*[A-Za-z0-9_])?\Z")
 
+# template/scripts/deploy.py's deployment manifest filename is
+# f".{suiteName}.deploy-manifest.json" -- 1 leading dot + suiteName + the
+# 21-character ".deploy-manifest.json" suffix. Bounding suiteName at 233
+# ASCII bytes keeps that rendered filename at exactly 255 bytes, the
+# common POSIX/NTFS single-path-component limit. Mirrors
+# template/scripts/suite_metadata.py's MAX_SUITE_NAME_LENGTH.
+MAX_SUITE_NAME_LENGTH = 233
+
 # The Thunderstore namespace charset (reviewer-verified contract): max 64
 # characters; first and last character alphanumeric; internal characters
 # alphanumeric or '_'. Distinct from the looser package-name charset at
