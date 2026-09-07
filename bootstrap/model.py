@@ -132,6 +132,31 @@ def suite_config_dict(model: ProjectModel) -> dict:
     }
 
 
+def identity_lock_dict(model: ProjectModel) -> dict:
+    """The generation-time identity/layout baseline `suite.identity.lock.json`
+    records: exactly the `suite.config.json` fields that already determined
+    physical repository structure -- or a persistent external identity --
+    when generation ran, and nothing else, so this stays a minimal
+    companion to `suite.config.json` rather than a second copy of it:
+
+    - `rootNamespace`: the `.sln` filename and every handwritten/generated
+      C# namespace were rendered from it.
+    - `suiteName`: `template/scripts/deploy.py`'s deployment-manifest
+      filename (`.<suiteName>.deploy-manifest.json`) is keyed on it, so an
+      unauthorized change would start a second, unrelated ownership
+      manifest for the same deployed DLLs instead of renaming the existing
+      one.
+
+    Derived from the same `suite_config_dict()` output written to disk, so
+    the two can never disagree at generation time.
+    `template/scripts/suite_metadata.py`'s `IMMUTABLE_IDENTITY_FIELDS` is
+    the generated-project-side half of this contract; keep both in
+    agreement.
+    """
+    cfg = suite_config_dict(model)
+    return {"schemaVersion": cfg["schemaVersion"], "suiteName": cfg["suiteName"], "rootNamespace": cfg["rootNamespace"]}
+
+
 PROJECT_TYPE_GUID = "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}"
 
 
@@ -175,17 +200,23 @@ def solution_text(model: ProjectModel) -> str:
 
 
 def module_catalog_rows(model: ProjectModel) -> str:
+    """The "Plugin" column identifies each module's BepInEx plugin by
+    project/assembly name, not by its GUID: the GUID is
+    `pluginGuidRoot + suffix`, and `pluginGuidRoot` is mutable
+    post-generation (synchronized into `SuiteConstants.Generated.cs`), so
+    baking its bootstrap-time value into this doc would go stale exactly
+    like the original audited dependency-pin drift."""
     lines = [f"| Common primitives | {model.common.project_name} | Library | n/a | 1 | 1 | scaffold |"]
     if model.server_core:
         lines.append(
-            f"| Server Core | {model.params.plugin_guid_root}.server | SERVER_ONLY | server only | 1 | 1 | scaffold |"
+            f"| Server Core | {model.server_core.project_name} | SERVER_ONLY | server only | 1 | 1 | scaffold |"
         )
     if model.shared_diagnostics:
         lines.append(
-            f"| Shared Diagnostics | {model.params.plugin_guid_root}.shared.diagnostics | SHARED_OPTIONAL | no | 1 | 1 | scaffold |"
+            f"| Shared Diagnostics | {model.shared_diagnostics.project_name} | SHARED_OPTIONAL | no | 1 | 1 | scaffold |"
         )
     if model.client:
-        lines.append(f"| Client | {model.params.plugin_guid_root}.client | CLIENT_ONLY | no | 1 | 1 | scaffold |")
+        lines.append(f"| Client | {model.client.project_name} | CLIENT_ONLY | no | 1 | 1 | scaffold |")
     return "\n".join(lines)
 
 
@@ -223,11 +254,6 @@ def token_map(model: ProjectModel) -> dict[str, str]:
         "PLUGIN_GUID_ROOT": p.plugin_guid_root,
         "AUTHOR": p.author,
         "THUNDERSTORE_NAMESPACE": p.thunderstore_namespace,
-        "SUITE_VERSION": p.suite_version,
-        "JOTUNN_VERSION": DEPENDENCY_BASELINE["jotunn_version"],
-        "BEPINEX_VERSION": DEPENDENCY_BASELINE["bepinex_version"],
-        "NETFX_REF_VERSION": DEPENDENCY_BASELINE["netfx_reference_version"],
-        "CSHARP_LANG_VERSION": DEPENDENCY_BASELINE["csharp_language_version"],
         "MODULE_CATALOG_ROWS": module_catalog_rows(model),
         "INCLUDED_MODULES_LIST": included_modules_bullets(model),
         "COMPATIBILITY_BOUNDARIES_LIST": compatibility_boundaries_bullets(model),

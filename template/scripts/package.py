@@ -258,6 +258,8 @@ def main() -> int:
     try:
         cfg = metadata.load_config()
         metadata.validate(cfg)
+        metadata.validate_identity(cfg)
+        metadata.validate_solution_membership(cfg)
         for generated_path, expected in metadata.expected_files(cfg).items():
             if not generated_path.exists() or generated_path.read_text(encoding="utf-8") != expected:
                 raise PackageError(

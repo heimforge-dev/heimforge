@@ -33,14 +33,17 @@ Current compatibility boundaries:
 
 ## Hardened metadata model
 
-`suite.config.json` is the authoritative repository metadata source for:
+`suite.config.json` is the editable source of truth for supported **mutable** suite/project/package metadata -- values that can be edited and re-synchronized without renaming repository layout:
 
-- suite/version identity
-- plugin GUID root
+- version, author, Thunderstore namespace, plugin GUID root
 - dependency pins
 - C# language version
-- project scopes and target frameworks
+- project scopes and target frameworks, subject to exactly matching `<RootNamespace>.sln`'s real `src/` project membership (see below)
 - client/server package membership
+
+`suiteName` and `rootNamespace` are generation-time **identity**, not editable through `suite.config.json`: `rootNamespace` already determined the `.sln` filename, every project directory under `src/`, and every handwritten/generated C# namespace when this repository was rendered; `suiteName` already determined the deployment-manifest identity (`.{suiteName}.deploy-manifest.json`) that tracks which DLLs this suite owns at a deployment destination. `suite.identity.lock.json` records both generation-time values; `sync`/`check`/packaging/deployment reject any `suite.config.json` edit that disagrees with it, before touching any generated file or deployment destination. Changing repository identity requires regenerating the suite (or creating a new project), not editing the config.
+
+`projects` may gain or lose entries after generation, but only in lockstep with `<RootNamespace>.sln` itself: add/remove the `.csproj`, add/remove the matching `.sln` entry, then update `suite.config.json` and run `sync`/`check`. The set of `src/` projects `suite.config.json` configures and the set the solution actually builds must always agree exactly; `sync`/`check`/packaging/deployment reject a mismatch in either direction before touching anything.
 
 Generated committed outputs are synchronized with:
 
@@ -54,7 +57,7 @@ Validate them with:
 python3 scripts/suite_metadata.py check
 ```
 
-The check fails if generated constants, MSBuild metadata, package locks, project target frameworks, or package classifications drift from the authoritative config.
+`sync` regenerates `build/Suite.Generated.props`, the common module's `SuiteConstants.Generated.cs`, and `packaging/profile-lock.json` from the mutable fields above. `check` fails if any of those generated files drift from the authoritative config, if `suiteName`/`rootNamespace` no longer match the `suite.identity.lock.json` baseline, or if `projects` no longer matches `<RootNamespace>.sln`'s real project membership.
 
 ## Start here
 
@@ -122,12 +125,14 @@ python3 scripts/suite_metadata.py check --release
 
 It intentionally fails while GUID/author/Thunderstore-namespace placeholders remain.
 
-## Current dependency baseline
+## Dependency pins
 
-- Jötunn: {{JOTUNN_VERSION}}
-- BepInExPack Valheim: {{BEPINEX_VERSION}}
-- Microsoft.NETFramework.ReferenceAssemblies: {{NETFX_REF_VERSION}} for cross-platform `net48` targeting
-- runtime plugins: `net48`, C# {{CSHARP_LANG_VERSION}}
+Exact current versions are authoritative in `suite.config.json` and synchronized into `build/Suite.Generated.props` by `scripts/suite_metadata.py sync` -- not duplicated here, so this section cannot go stale when a pin changes:
+
+- Jötunn: `jotunnVersion`
+- BepInExPack Valheim: `bepInExPackVersion`
+- Microsoft.NETFramework.ReferenceAssemblies: `netFrameworkReferenceAssembliesVersion`, for cross-platform `net48` targeting
+- runtime plugin language version: `csharpLanguageVersion` (`net48` target)
 
 Dependency changes must be deliberate and documented. Do not silently float them.
 

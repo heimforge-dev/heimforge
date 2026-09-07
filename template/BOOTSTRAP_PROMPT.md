@@ -23,12 +23,12 @@ Do not redesign the high-confidence foundation during bootstrap:
 
 - WSL/Linux is canonical for repo/harness/build/test/package/server tooling.
 - Windows Valheim is the actual client runtime and is accessed through `/mnt/c/...`.
-- Runtime topology is Common + ServerCore + independent Shared modules + Client. Any of ServerCore, Client, or a Shared.* module may be absent in this repository; `suite.config.json` is authoritative for what was generated.
+- Runtime topology is Common + ServerCore + independent Shared modules + Client. Any of ServerCore, Client, or a Shared.* module may be absent in this repository; `suite.config.json`'s `projects` is authoritative for what was generated, and must always exactly match `<RootNamespace>.sln`'s real project membership.
 - ServerCore remains `NotEnforced / None`.
 - Client remains `NotEnforced / None`.
 - Shared.Diagnostics remains `VersionCheckOnly / Minor` until a concrete reason changes it.
 - Jötunn is the common modding/network platform; ServerSync is not added without a demonstrated need.
-- `suite.config.json` is the authoritative metadata/project/package map.
+- `suite.config.json` is the editable source of truth for supported mutable suite/project/package metadata. Generation-time suite identity (`suiteName`, `rootNamespace`) is locked in `suite.identity.lock.json` and cannot be changed by editing `suite.config.json`.
 - `scripts/deploy.py` is the single deployment implementation for both Bash and the OMP extension.
 - Do not replace these choices merely to make the scaffold look different.
 

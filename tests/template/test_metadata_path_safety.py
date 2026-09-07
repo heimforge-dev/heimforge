@@ -20,6 +20,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import uuid
 from unittest import mock
 import zipfile
 from pathlib import Path
@@ -41,6 +42,26 @@ def _load_cfg(project_dir: Path) -> dict:
 
 def _save_cfg(project_dir: Path, cfg: dict) -> None:
     (project_dir / "suite.config.json").write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+
+
+def _add_sln_entries(output_dir: Path, root_namespace: str, projects: list[str]) -> None:
+    """Append well-formed `Project(...)"`/`EndProject` entries for
+    `projects` under `src/` to the generated `<root_namespace>.sln`,
+    matching bootstrap/model.py's solution_text() line shape closely
+    enough for suite_metadata.py's solution parser to recognize them."""
+    sln_path = output_dir / f"{root_namespace}.sln"
+    lines = sln_path.read_text(encoding="utf-8").splitlines()
+    insert_at = next(i for i, line in enumerate(lines) if line.strip() == "Global")
+    new_lines = []
+    for project in projects:
+        guid = "{" + str(uuid.uuid4()).upper() + "}"
+        new_lines += [
+            f'Project("{{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}}") = "{project}", '
+            f'"src\\{project}\\{project}.csproj", "{guid}"',
+            "EndProject",
+        ]
+    lines[insert_at:insert_at] = new_lines
+    sln_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _snapshot(paths: list[Path]) -> dict:
@@ -667,6 +688,7 @@ class PackageWriteBoundaryTests(unittest.TestCase):
             dll = project_dir / "bin" / "Release" / "net48" / f"{project}.dll"
             dll.parent.mkdir(parents=True)
             dll.write_bytes(project.encode())
+        _add_sln_entries(output_dir, cfg["rootNamespace"], ["Foo.Bar", "foo-bar"])
         _save_cfg(output_dir, cfg)
         sync = _run(["scripts/suite_metadata.py", "sync"], output_dir)
         self.assertEqual(0, sync.returncode, sync.stdout)

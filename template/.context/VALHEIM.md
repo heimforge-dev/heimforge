@@ -8,8 +8,7 @@ UNVERIFIED - fill during bootstrap.
 
 ## Current runtime notes
 
-- Jotunn {{JOTUNN_VERSION}} is the pinned initial dependency.
-- BepInExPack Valheim {{BEPINEX_VERSION}} is the pinned initial pack dependency.
+- Jotunn and BepInExPack Valheim versions are pinned in `suite.config.json` (`jotunnVersion`, `bepInExPackVersion`), not duplicated here.
 - Current Jotunn documentation recommends publicized Valheim assemblies for development.
 - Jotunn's Mod Stub currently targets net48 and C# 10.
 

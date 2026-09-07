@@ -52,8 +52,8 @@ For release/deployment work also read:
 24. Treat WSL/Linux as the canonical development and build environment. Keep the repo in the WSL filesystem, not under `/mnt/c`, unless there is a specific reason otherwise.
 25. Use WSL paths such as `/mnt/c/...` when accessing the Windows Valheim client installation.
 26. Bash/WSL scripts are the only canonical project workflow. Do not create a second independent PowerShell implementation of build/deploy/package behavior.
-27. `suite.config.json` is the authoritative suite/build/package metadata source. After editing it, run `python3 scripts/suite_metadata.py sync` and commit the generated changes together.
-28. Never manually edit `build/Suite.Generated.props`, `SuiteConstants.Generated.cs`, or `packaging/profile-lock.json`.
+27. `suite.config.json` is the authoritative suite/build/package metadata source for supported mutable fields. After editing it, run `python3 scripts/suite_metadata.py sync` and commit the generated changes together. `suiteName` and `rootNamespace` are generation-time identity, locked in `suite.identity.lock.json`; `sync`/`check` reject any edit to either, and neither can be changed without regenerating the suite. Adding/removing a `projects` entry requires adding/removing the matching `.sln` entry in lockstep -- `sync`/`check` reject a mismatch.
+28. Never manually edit `build/Suite.Generated.props`, `SuiteConstants.Generated.cs`, `packaging/profile-lock.json`, or `suite.identity.lock.json`.
 29. Do not duplicate client/server deployment classification. `scripts/deploy.py` and `suite.config.json` define it.
 30. Before release/deployment changes run the scaffold tests in addition to C# tests.
 31. Public release preparation must pass `python3 scripts/suite_metadata.py check --release`.

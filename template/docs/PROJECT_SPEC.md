@@ -10,7 +10,7 @@ Build one coherent mod ecosystem with three runtime tiers:
 
 The suite must support vanilla clients when the enabled feature set permits it and must reject clients cleanly when a required shared module is absent or incompatible.
 
-ServerCore, Client, and Shared.* modules may be individually omitted at generation time; `suite.config.json` is authoritative for which modules exist in this repository.
+ServerCore, Client, and Shared.* modules may be individually omitted at generation time; `suite.config.json`'s `projects` is authoritative for which modules exist in this repository, and must always exactly match `<RootNamespace>.sln`'s real project membership.
 
 ## Principles
 

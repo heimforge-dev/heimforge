@@ -53,11 +53,6 @@ KNOWN_TOKENS = {
     "PLUGIN_GUID_ROOT",
     "AUTHOR",
     "THUNDERSTORE_NAMESPACE",
-    "SUITE_VERSION",
-    "JOTUNN_VERSION",
-    "BEPINEX_VERSION",
-    "NETFX_REF_VERSION",
-    "CSHARP_LANG_VERSION",
     "MODULE_CATALOG_ROWS",
     "INCLUDED_MODULES_LIST",
     "COMPATIBILITY_BOUNDARIES_LIST",
@@ -176,15 +171,16 @@ def _substitute(text: str, tokens: dict[str, str], *, escape=None) -> str:
 
 def _generated_output_paths(model: ProjectModel) -> frozenset[str]:
     """Paths `generate()` writes *after* `render_tree()` returns: the
-    programmatic `suite.config.json`/`.sln`, and `suite_metadata.py
-    sync`'s outputs. A manifest source must never render to one of
-    these — it would either be silently overwritten by the real
-    generated file or corrupt it.
+    programmatic `suite.config.json`/`.sln`/`suite.identity.lock.json`,
+    and `suite_metadata.py sync`'s outputs. A manifest source must never
+    render to one of these — it would either be silently overwritten by
+    the real generated file or corrupt it.
     """
     ns = model.params.root_namespace
     return frozenset(
         {
             "suite.config.json",
+            "suite.identity.lock.json",
             f"{ns}.sln",
             "build/Suite.Generated.props",
             f"src/{ns}.Common/SuiteConstants.Generated.cs",

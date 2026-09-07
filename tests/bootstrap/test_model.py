@@ -1,7 +1,7 @@
 import unittest
 
 from bootstrap import naming
-from bootstrap.model import ProjectParams, build_model, solution_text, suite_config_dict, token_map, validate_params
+from bootstrap.model import ProjectParams, build_model, identity_lock_dict, solution_text, suite_config_dict, token_map, validate_params
 
 
 def make_params(**overrides) -> ProjectParams:
@@ -109,6 +109,24 @@ class ModelTests(unittest.TestCase):
     def test_validate_params_rejects_suite_name_over_max_length(self):
         with self.assertRaises(naming.NamingError):
             validate_params(make_params(suite_name="S" * (naming.MAX_SUITE_NAME_LENGTH + 1)))
+
+    def test_identity_lock_dict_contains_only_suite_name_root_namespace_and_schema_version(self):
+        """The baseline must stay a minimal companion to suite.config.json:
+        just the field(s) that already determined physical repository
+        structure/external identity at render time, not a second copy of
+        the whole config."""
+        lock = identity_lock_dict(build_model(make_params()))
+        self.assertEqual({"schemaVersion", "suiteName", "rootNamespace"}, set(lock))
+        self.assertEqual(1, lock["schemaVersion"])
+        self.assertEqual("Sampleheim", lock["suiteName"])
+        self.assertEqual("Sampleheim", lock["rootNamespace"])
+
+    def test_identity_lock_dict_matches_suite_config_dict_identity_fields(self):
+        model = build_model(make_params(suite_name="Auditheim", root_namespace="ExampleCompany.Skogtind"))
+        cfg = suite_config_dict(model)
+        lock = identity_lock_dict(model)
+        self.assertEqual(cfg["suiteName"], lock["suiteName"])
+        self.assertEqual(cfg["rootNamespace"], lock["rootNamespace"])
 
 
 if __name__ == "__main__":

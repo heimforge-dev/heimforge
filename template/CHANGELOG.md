@@ -1,6 +1,6 @@
 # Changelog
 
-## {{SUITE_VERSION}} - Unreleased
+## Unreleased
 
 ### Architecture
 

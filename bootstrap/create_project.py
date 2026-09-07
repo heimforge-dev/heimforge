@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import naming
-from .model import ProjectModel, ProjectParams, build_model, solution_text, suite_config_dict, validate_params
+from .model import ProjectModel, ProjectParams, build_model, identity_lock_dict, solution_text, suite_config_dict, validate_params
 from .render import TEMPLATE_DIR, render_tree, validate_template
 from .validate_generated import NO_BYTECODE_ENV, ValidationResult, validate_generated
 
@@ -562,6 +562,9 @@ def generate(
                 json.dumps(suite_config_dict(model), indent=2) + "\n", encoding="utf-8"
             )
             (staging_dir / f"{params.root_namespace}.sln").write_text(solution_text(model), encoding="utf-8")
+            (staging_dir / "suite.identity.lock.json").write_text(
+                json.dumps(identity_lock_dict(model), indent=2) + "\n", encoding="utf-8"
+            )
 
             sync = subprocess.run(
                 ["python3", "scripts/suite_metadata.py", "sync"],

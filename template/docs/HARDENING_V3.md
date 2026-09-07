@@ -17,7 +17,7 @@ This hardening pass intentionally preserves the established runtime architecture
 
 ## Hardened
 
-- `suite.config.json` is now the single authoritative metadata/project/package map.
+- `suite.config.json` is now the editable source of truth for supported mutable suite/project/package metadata; generation-time suite identity (`suiteName`, `rootNamespace`) is locked in `suite.identity.lock.json` and rejected if edited.
 - Generated MSBuild properties, C# suite constants, and package lock are synchronized and checked.
 - Linux/WSL `net48` builds explicitly reference `Microsoft.NETFramework.ReferenceAssemblies` as a private build dependency.
 - Preflight now validates local config, path agreement, Valheim assembly presence, BepInEx, recursively located Jötunn, tooling, and Jötunn prebuild/publicized-reference state.

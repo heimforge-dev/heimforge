@@ -225,6 +225,17 @@ class RenderDestinationSafetyTests(unittest.TestCase):
 
         self.assertEqual([], list(output_dir.iterdir()))
 
+    def test_source_colliding_with_generated_identity_lock_is_rejected(self):
+        params = make_params()
+        model = build_model(params)
+        output_dir = Path(tempfile.mkdtemp(prefix="valheimsuite-bootstrap-fixture-"))
+
+        with mock.patch("bootstrap.render.REQUIRED_TEMPLATE_FILES", frozenset({"suite.identity.lock.json"})):
+            with self.assertRaises(RenderError):
+                render_tree(model, output_dir)
+
+        self.assertEqual([], list(output_dir.iterdir()))
+
     def test_real_manifest_never_triggers_the_render_plan_guards(self):
         """Sanity check that the guards above are defense-in-depth, not a
         false alarm against the actual shipped manifest."""

@@ -11,7 +11,7 @@
 ServerCore   Client     Shared.<Module>
 ```
 
-`ServerCore`, `Client`, and every `Shared.*` plugin are independent BepInEx plugins. ServerCore, Client, and Shared.* modules may be individually omitted at generation time; `suite.config.json` is authoritative for which modules exist in this repository.
+`ServerCore`, `Client`, and every `Shared.*` plugin are independent BepInEx plugins. ServerCore, Client, and Shared.* modules may be individually omitted at generation time; `suite.config.json`'s `projects` is authoritative for which modules exist in this repository, and must always exactly match `<RootNamespace>.sln`'s real project membership.
 
 ## Compatibility categories
 

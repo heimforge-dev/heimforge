@@ -20,20 +20,17 @@ Every text file under `template/` may use only the tokens below. `bootstrap/rend
 
 | Token | Computed in | Notes |
 |---|---|---|
-| `{{SUITE_NAME}}` | `token_map()` from `ProjectParams.suite_name` | |
-| `{{ROOT_NAMESPACE}}` | `token_map()` from `ProjectParams.root_namespace` | dot-separated C# namespace, e.g. `ExampleCompany.Vibeheim` |
+| `{{SUITE_NAME}}` | `token_map()` from `ProjectParams.suite_name` | legitimate bootstrap-time literal: `suiteName` is generation-time identity (see below), not mutable metadata that could go stale |
+| `{{ROOT_NAMESPACE}}` | `token_map()` from `ProjectParams.root_namespace` | dot-separated C# namespace, e.g. `ExampleCompany.Vibeheim`; same generation-time identity guarantee |
 | `{{ROOT_NAMESPACE_LOWER}}` | `token_map()`, `root_namespace.lower()` | |
-| `{{PLUGIN_GUID_ROOT}}` | `token_map()` from `ProjectParams.plugin_guid_root` | |
+| `{{PLUGIN_GUID_ROOT}}` | `token_map()` from `ProjectParams.plugin_guid_root` | currently unused in `template/`; kept because `pluginGuidRoot` is mutable metadata, so a future use must not embed it as a bootstrap-time literal the way the module catalog used to |
 | `{{AUTHOR}}` | `token_map()` from `ProjectParams.author` | |
 | `{{THUNDERSTORE_NAMESPACE}}` | `token_map()` from `ProjectParams.thunderstore_namespace` | |
-| `{{SUITE_VERSION}}` | `token_map()` from `ProjectParams.suite_version` | |
-| `{{JOTUNN_VERSION}}` | `token_map()`, `DEPENDENCY_BASELINE` | |
-| `{{BEPINEX_VERSION}}` | `token_map()`, `DEPENDENCY_BASELINE` | |
-| `{{NETFX_REF_VERSION}}` | `token_map()`, `DEPENDENCY_BASELINE` | |
-| `{{CSHARP_LANG_VERSION}}` | `token_map()`, `DEPENDENCY_BASELINE` | |
-| `{{MODULE_CATALOG_ROWS}}` | `module_catalog_rows()` | one Markdown table row per included module; no feature-specific rows |
+| `{{MODULE_CATALOG_ROWS}}` | `module_catalog_rows()` | one Markdown table row per included module; no feature-specific rows, no literal `pluginGuidRoot`-derived GUIDs |
 | `{{INCLUDED_MODULES_LIST}}` | `included_modules_bullets()` | bullet list of included runtime packages |
 | `{{COMPATIBILITY_BOUNDARIES_LIST}}` | `compatibility_boundaries_bullets()` | bullet list of included modules' compatibility levels |
+
+`suiteVersion`, `pluginGuidRoot`, `author`, `thunderstoreNamespace`, dependency pins (`jotunnVersion`, `bepInExPackVersion`, `netFrameworkReferenceAssembliesVersion`), and `csharpLanguageVersion` are mutable `suite.config.json` metadata and deliberately **not** tokens (beyond `{{PLUGIN_GUID_ROOT}}`'s unused, deliberately-non-prose reservation above): they can be edited and re-synchronized after generation (`scripts/suite_metadata.py sync`), so no `template/` prose file may embed their value as a bootstrap-time literal that `sync` cannot update -- `suite.config.json`/`build/Suite.Generated.props`/`SuiteConstants.Generated.cs` are the authoritative source by name instead. `suiteName` and `rootNamespace` are the opposite case: generation-time identity fixed in `suite.identity.lock.json`, so their bootstrap-time token substitution is permanent and correct by construction. See `docs/GENERATOR_ARCHITECTURE.md`'s "Generation-time identity/layout baseline".
 
 Path token: `__ROOT_NAMESPACE__` — substring-replaced in path segments only (e.g. `src/__ROOT_NAMESPACE__.Common/` → `src/Vibeheim.Common/`), never inside file content.
 
@@ -64,6 +61,8 @@ Path token: `__ROOT_NAMESPACE__` — substring-replaced in path segments only (e
 `bootstrap/naming.py`'s `validate_semver()`/`GUID_ROOT_RE`/`NAMESPACE_SEGMENT`, C# keyword set, `THUNDERSTORE_NAMESPACE_RE`, and portable path-component rules intentionally mirror the generated scripts' `validate_semver()`/`GUID_ROOT`/`NAMESPACE_SEGMENT`, C# keyword set, `THUNDERSTORE_NAMESPACE`, and `NAME_COMPONENT`. `validate_semver()` implements SemVer 2.0.0 syntax (https://semver.org) directly rather than as one regex — see `tests/bootstrap/test_naming.py` and `tests/template/test_naming_grammar.py`'s `BootstrapGeneratedGrammarAlignmentTests` for the shared case list that keeps both copies from drifting apart. A generated project must never import bootstrapper code — its own `suite_metadata.py check`/`sync` is the only thing that validates its `suite.config.json` at runtime, and it must do so independently even after a maintainer hand-edits the file — so the copies are kept in sync by convention, not by a shared dependency. Update both together when either changes.
 
 `suite_metadata.py` additionally enforces path-containment and archive-safety rules (`contain`, `package.py`'s `validate_arcname`) that have no bootstrapper-side counterpart, because the bootstrapper never re-derives filesystem paths from arbitrary post-generation edits the way the generated project's own `sync`/`package.py` must.
+
+`bootstrap/model.py`'s `identity_lock_dict()` (what generation writes into `suite.identity.lock.json`) and `template/scripts/suite_metadata.py`'s `IMMUTABLE_IDENTITY_FIELDS`/`validate_identity()` (what a generated project checks `suite.config.json` against) are a second deliberately-duplicated pair: both must agree on exactly which fields are generation-time identity/layout — currently `suiteName` and `rootNamespace` — or a generated project could accept an edit the bootstrapper's own baseline format doesn't expect, or vice versa. See `docs/GENERATOR_ARCHITECTURE.md`'s "Generation-time identity/layout baseline".
 
 ## `.ts` token rendering never trusts input grammar alone
 

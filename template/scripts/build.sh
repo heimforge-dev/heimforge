@@ -5,5 +5,5 @@ cd "$repo_root"
 configuration="${1:-Debug}"
 case "$configuration" in Debug|Release) ;; *) echo "Configuration must be Debug or Release" >&2; exit 2;; esac
 python3 scripts/suite_metadata.py check
-solution="$(python3 -c 'import json,pathlib; print(json.loads(pathlib.Path("suite.config.json").read_text())["rootNamespace"] + ".sln")')"
+solution="$(python3 -c 'import json,pathlib; print(json.loads(pathlib.Path("suite.identity.lock.json").read_text())["rootNamespace"] + ".sln")')"
 dotnet build "$solution" -c "$configuration"

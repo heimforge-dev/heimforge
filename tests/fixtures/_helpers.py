@@ -97,6 +97,7 @@ def expected_relpaths(
             expected |= {rel.replace("__ROOT_NAMESPACE__", root_namespace) for rel in OPTIONAL_TEMPLATE_FILES[module]}
     expected |= {
         "suite.config.json",
+        "suite.identity.lock.json",
         f"{root_namespace}.sln",
         "build/Suite.Generated.props",
         f"src/{root_namespace}.Common/SuiteConstants.Generated.cs",

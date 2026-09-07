@@ -16,6 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "suite.config.json"
+IDENTITY_LOCK_PATH = ROOT / "suite.identity.lock.json"
 GENERATED_PROPS = ROOT / "build" / "Suite.Generated.props"
 PROFILE_LOCK = ROOT / "packaging" / "profile-lock.json"
 _ROOT_ID = (ROOT.stat().st_dev, ROOT.stat().st_ino)
@@ -25,6 +26,30 @@ _UNSET = object()
 
 GUID_ROOT = re.compile(r"^[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)+\Z")
 VALID_SCOPES = {"common", "serverOnly", "clientOnly", "sharedOptional", "sharedRequired"}
+
+# bootstrap/model.py's solution_text() -- the only writer of
+# <rootNamespace>.sln -- emits exactly one MSBuild project-entry line per
+# project, followed by a bare "EndProject" line:
+#   Project("{TYPE-GUID}") = "Name", "path\to\Name.csproj", "{PROJECT-GUID}"
+#   EndProject
+# This backs a narrow state-machine parser for that specific block
+# shape, not a general .sln grammar -- solution folders, nested
+# projects, and other section types are out of scope because the
+# bootstrapper never emits them, but a *malformed* one (missing
+# EndProject, a Project(...) opened before a prior one closed) is still
+# actively rejected rather than silently misparsed.
+SOLUTION_PROJECT_LINE = re.compile(
+    r'^Project\("(?P<type_guid>\{[0-9A-Fa-f-]+\})"\)\s*=\s*'
+    r'"(?P<name>[^"]*)",\s*"(?P<path>[^"]*)",\s*"(?P<project_guid>\{[0-9A-Fa-f-]+\})"\s*\Z'
+)
+# The standard MSBuild "C# project" project-type GUID -- see
+# bootstrap/model.py's PROJECT_TYPE_GUID, which every generated project
+# entry uses. Compared case-insensitively: Visual Studio/dotnet accept
+# either case, so a lowercase GUID is still a real C# project entry, not
+# an "unrelated" one. A solution folder (a different, well-known type
+# GUID) or any other project type is deliberately not one of "our"
+# projects regardless of case.
+CSHARP_PROJECT_TYPE_GUID = "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}"
 
 # The four package/deployment membership groups from suite.config.json's
 # "packages" object. deploy.py's modules_for() and package.py's
@@ -117,6 +142,83 @@ def load_config() -> dict:
     if not isinstance(cfg, dict):
         raise MetadataError("suite.config.json must contain a JSON object")
     return cfg
+
+
+# The exact set of `suite.config.json` fields that are generation-time
+# identity/layout, not editable mutable metadata: `rootNamespace` already
+# determined the `.sln` filename, every project directory under `src/`,
+# and every handwritten/generated C# namespace when `render_tree()` ran;
+# `suiteName` already determined the deployment-manifest identity
+# (`.<suiteName>.deploy-manifest.json` in `deploy.py`'s `manifest_name()`)
+# that tracks which DLLs this suite owns at a deployment destination --
+# changing it post-deployment would start a second, unrelated ownership
+# manifest for the same DLLs rather than renaming the existing one.
+# Nothing in `validate()` re-derives either field from reality at check
+# time, so an edited value is never independently caught the way an
+# unknown/missing project already is -- this baseline closes that gap.
+# Mirrors `bootstrap/model.py`'s `identity_lock_dict()`; keep both in sync.
+IMMUTABLE_IDENTITY_FIELDS = ("suiteName", "rootNamespace")
+
+# suite.identity.lock.json is a closed schema: exactly these keys, no more
+# and no less. An extra key could hide a field a future reader assumes is
+# also checked; a missing one is caught below regardless.
+IDENTITY_LOCK_KEYS = frozenset({"schemaVersion", *IMMUTABLE_IDENTITY_FIELDS})
+
+
+def load_identity_lock() -> dict:
+    try:
+        raw = IDENTITY_LOCK_PATH.read_text(encoding="utf-8")
+        lock = json.loads(raw)
+    except FileNotFoundError as exc:
+        raise MetadataError(
+            f"Missing {IDENTITY_LOCK_PATH.relative_to(ROOT)}: every generated suite carries its "
+            "generation-time identity/layout baseline; regenerate the suite if this file was deleted"
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise MetadataError(f"{IDENTITY_LOCK_PATH.relative_to(ROOT)} is malformed: invalid JSON: {exc}") from exc
+    if not isinstance(lock, dict):
+        raise MetadataError(f"{IDENTITY_LOCK_PATH.relative_to(ROOT)} is malformed: must contain a JSON object")
+    missing = sorted(IDENTITY_LOCK_KEYS - set(lock))
+    extra = sorted(set(lock) - IDENTITY_LOCK_KEYS)
+    if missing or extra:
+        problems = []
+        if missing:
+            problems.append(f"missing {missing}")
+        if extra:
+            problems.append(f"unexpected {extra}")
+        raise MetadataError(
+            f"{IDENTITY_LOCK_PATH.relative_to(ROOT)} is malformed: must contain exactly the keys "
+            f"{sorted(IDENTITY_LOCK_KEYS)}: " + "; ".join(problems)
+        )
+    if type(lock["schemaVersion"]) is not int or lock["schemaVersion"] != 1:
+        raise MetadataError(
+            f"{IDENTITY_LOCK_PATH.relative_to(ROOT)} is malformed: schemaVersion must be the JSON integer 1, "
+            f"got {lock['schemaVersion']!r}"
+        )
+    try:
+        suite_name = validate_path_component(lock["suiteName"], "suiteName")
+        if len(suite_name) > MAX_SUITE_NAME_LENGTH:
+            raise MetadataError(f"suiteName must be at most {MAX_SUITE_NAME_LENGTH} characters (got {len(suite_name)})")
+        validate_namespace(lock["rootNamespace"], "rootNamespace")
+    except MetadataError as exc:
+        raise MetadataError(f"{IDENTITY_LOCK_PATH.relative_to(ROOT)} is malformed: {exc}") from exc
+    return lock
+
+
+def validate_identity(cfg: dict) -> None:
+    """Reject any `suite.config.json` edit to a generation-time
+    identity/layout field before `sync`/`check`/packaging act on it.
+    Call after `validate(cfg)` so a syntactically invalid value is still
+    reported as an invalid value, not as an immutable-field change."""
+    lock = load_identity_lock()
+    for field in IMMUTABLE_IDENTITY_FIELDS:
+        expected = lock[field]
+        actual = cfg.get(field)
+        if actual != expected:
+            raise MetadataError(
+                f"{field} is immutable after generation: expected {expected}, got {actual}; "
+                "regenerate the suite (or create a new project) to change repository identity/layout"
+            )
 
 
 def require_string(cfg: dict, key: str) -> str:
@@ -290,8 +392,8 @@ def contain(path: Path, root: Path, *, error_cls: type[Exception] = MetadataErro
 
 
 def validate(cfg: dict, release: bool = False) -> None:
-    if cfg.get("schemaVersion") != 1:
-        raise MetadataError("schemaVersion must currently be 1")
+    if type(cfg.get("schemaVersion")) is not int or cfg.get("schemaVersion") != 1:
+        raise MetadataError("schemaVersion must be the JSON integer 1")
 
     suite_name = validate_path_component(require_string(cfg, "suiteName"), "suiteName")
     if len(suite_name) > MAX_SUITE_NAME_LENGTH:
@@ -400,6 +502,132 @@ def validate(cfg: dict, release: bool = False) -> None:
             bad.append("pluginGuidRoot")
         if bad:
             raise MetadataError("Public-release metadata is incomplete: " + ", ".join(bad))
+
+
+def parse_solution_src_projects(sln_text: str) -> list[tuple[str, str]]:
+    """Every C# project entry in the solution whose path's first
+    component is `src` -- i.e. every project `suite.config.json`'s
+    `projects` is supposed to declare -- as a `(name, normalized_path)`
+    list that **preserves every entry, including duplicates**: turning
+    this straight into a dict here would silently collapse malformed
+    multiplicity (two entries with the same name, or two names sharing
+    one path) before `validate_solution_membership()` ever gets a
+    chance to reject it. A syntactically *valid* solution folder or
+    non-C#-project entry is deliberately excluded by role/type, not
+    merely left unrecognized, so its presence never fails the
+    invariant; the generated test project (`tests/...`) is excluded by
+    path the same way.
+
+    A small state machine, not a general `.sln` grammar: it tracks
+    exactly one open `Project(...)`/`EndProject` block at a time, since
+    that is the only shape `bootstrap/model.py`'s `solution_text()` ever
+    emits. A `Project(...)` opened before the prior one's `EndProject`,
+    an `EndProject` with nothing open, or a block still open at
+    end-of-file are all malformed structure and raise -- never silently
+    misparsed into a false membership match.
+
+    Every line that *opens* a project block (`Project(...`) must itself
+    parse as a well-formed declaration (`SOLUTION_PROJECT_LINE`) once its
+    `EndProject` is reached -- `dotnet sln <solution> list` already
+    rejects a solution containing a header it cannot parse, and this
+    parser must reject the same solution for the same reason instead of
+    silently ignoring the block as "not a C# project". Only a header
+    that *does* parse, but names a type other than the C# project-type
+    GUID (a solution folder, some other project type), is excluded as
+    intentionally irrelevant rather than rejected.
+
+    Every recognized C# entry's own path must equal exactly
+    `src/<name>/<name>.csproj` for *that entry's own declared name* --
+    rejected immediately (not merely excluded) if it doesn't, so a
+    traversal/absolute/mismatched-filename path can never survive to be
+    compared against `suite.config.json` under a matching project name.
+    """
+    entries: list[tuple[str, str]] = []
+    open_line: str | None = None
+    for line in sln_text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("Project("):
+            if open_line is not None:
+                raise MetadataError(
+                    f"malformed solution: a Project(...) entry opened before the prior one's "
+                    f"EndProject: {open_line!r}"
+                )
+            open_line = stripped
+        elif stripped == "EndProject":
+            if open_line is None:
+                raise MetadataError("malformed solution: EndProject with no matching Project(...) entry")
+            header = open_line
+            open_line = None
+            match = SOLUTION_PROJECT_LINE.match(header)
+            if match is None:
+                raise MetadataError(
+                    f"malformed solution: Project(...) entry does not match the supported declaration "
+                    f"syntax: {header!r}"
+                )
+            if match.group("type_guid").upper() != CSHARP_PROJECT_TYPE_GUID:
+                continue
+            name = match.group("name")
+            normalized = match.group("path").replace("\\", "/")
+            if normalized.split("/")[0] != "src":
+                continue
+            expected = f"src/{name}/{name}.csproj"
+            if normalized != expected:
+                raise MetadataError(
+                    f"solution project {name!r} has a malformed path: expected {expected!r}, got {normalized!r}"
+                )
+            entries.append((name, normalized))
+    if open_line is not None:
+        raise MetadataError(f"malformed solution: Project(...) entry never closed with EndProject: {open_line!r}")
+    return entries
+
+
+def _reject_duplicate_source_entries(entries: list[tuple[str, str]]) -> None:
+    seen_names: dict[str, str] = {}
+    seen_paths: dict[str, str] = {}
+    for name, path in entries:
+        if name in seen_names:
+            if seen_names[name] == path:
+                raise MetadataError(f"solution contains a duplicate project entry: {name!r} ({path!r}) appears more than once")
+            raise MetadataError(f"solution project {name!r} appears at two different paths: {seen_names[name]!r} and {path!r}")
+        if path in seen_paths:
+            raise MetadataError(f"solution path {path!r} is used by two different project names: {seen_paths[path]!r} and {name!r}")
+        seen_names[name] = path
+        seen_paths[path] = name
+
+
+def validate_solution_membership(cfg: dict) -> None:
+    """`suite.config.json`'s `projects` must exactly match which projects
+    the canonical `<rootNamespace>.sln` actually builds under `src/`:
+    the same name set, and -- since `parse_solution_src_projects()`
+    already proved each recognized entry's own path equals its own
+    canonical `src/<name>/<name>.csproj` -- a solution entry that keeps a
+    configured project's *name* while its path silently redirected
+    elsewhere (e.g. a `..` traversal to an external project) was already
+    rejected there, not merely accepted because the name matched. Call
+    after `validate_identity(cfg)` so `cfg['rootNamespace']` is already
+    confirmed to name the real, generated solution."""
+    sln_path = ROOT / f"{cfg['rootNamespace']}.sln"
+    try:
+        sln_text = sln_path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise MetadataError(f"Missing solution file: {sln_path.relative_to(ROOT)}") from exc
+    entries = parse_solution_src_projects(sln_text)
+    _reject_duplicate_source_entries(entries)
+    solution_projects = dict(entries)
+    configured = set(cfg["projects"])
+    missing_from_solution = sorted(configured - set(solution_projects))
+    missing_from_config = sorted(set(solution_projects) - configured)
+    if missing_from_solution or missing_from_config:
+        problems = []
+        if missing_from_solution:
+            problems.append(
+                f"configured but absent from {sln_path.name} at its canonical src/<name>/<name>.csproj path: {missing_from_solution}"
+            )
+        if missing_from_config:
+            problems.append(f"present in {sln_path.name} but absent from projects: {missing_from_config}")
+        raise MetadataError(
+            "projects must exactly match the canonical solution's src/ project membership: " + "; ".join(problems)
+        )
 
 
 def xml_escape(value: str) -> str:
@@ -836,6 +1064,8 @@ def atomic_write_text(
 
 def sync(cfg: dict) -> None:
     validate(cfg)
+    validate_identity(cfg)
+    validate_solution_membership(cfg)
     outputs: list[tuple[Path, str, _OutputParent, _FinalTarget]] = []
     try:
         for path, content in expected_files(cfg).items():
@@ -857,6 +1087,8 @@ def sync(cfg: dict) -> None:
 
 def check(cfg: dict, release: bool = False) -> None:
     validate(cfg, release=release)
+    validate_identity(cfg)
+    validate_solution_membership(cfg)
     mismatches = []
     for path, expected in expected_files(cfg).items():
         if not path.exists():

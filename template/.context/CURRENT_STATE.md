@@ -2,7 +2,7 @@
 
 - {{SUITE_NAME}} generated from ValheimSuite Bootstrap.
 {{INCLUDED_MODULES_LIST}}
-- `suite.config.json` is the authoritative metadata/package map.
+- `suite.config.json` is the editable source of truth for supported mutable suite/project/package metadata; generation-time suite identity is locked in `suite.identity.lock.json`.
 - Generated MSBuild/C# package metadata is synchronized and validated.
 - Cross-platform `net48` reference assemblies are explicitly declared.
 - Metadata-driven deployment prevents client/server DLL cross-contamination.
@@ -34,9 +34,7 @@
 ## Last Verified
 
 Valheim: UNVERIFIED LOCALLY
-BepInExPack: {{BEPINEX_VERSION}} pin
-Jötunn: {{JOTUNN_VERSION}} pin
-Microsoft.NETFramework.ReferenceAssemblies: {{NETFX_REF_VERSION}} pin
+BepInExPack / Jötunn / Microsoft.NETFramework.ReferenceAssemblies: pins tracked in `suite.config.json`, not duplicated here
 Repository scaffold tests: PASS at generation time
 Server build: NOT RUN IN USER ENVIRONMENT
 Client build: NOT RUN IN USER ENVIRONMENT

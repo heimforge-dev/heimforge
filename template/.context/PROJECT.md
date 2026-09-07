@@ -16,7 +16,7 @@ Canonical development environment: **WSL/Linux**.
 - Windows Valheim client: accessed from WSL through `/mnt/c/...`
 - dedicated test/server environment: Linux/Docker where possible
 - Bash/WSL scripts define the only canonical project workflow
-- `suite.config.json` is the authoritative suite/build/package metadata source
+- `suite.config.json` is the editable source of truth for supported mutable suite/project/package metadata; generation-time suite identity (`suiteName`, `rootNamespace`) is locked in `suite.identity.lock.json`
 
 Keep the repository in the WSL filesystem, for example `~/src/valheim-mod-suite`, rather than under `/mnt/c`.
 
@@ -29,13 +29,15 @@ Keep the repository in the WSL filesystem, for example `~/src/valheim-mod-suite`
 - dedicated server may run under Docker
 - Windows PC clients are the primary client runtime
 
-## Initial dependency pins
+## Dependency pins
 
-- Jotunn {{JOTUNN_VERSION}}
-- BepInExPack Valheim {{BEPINEX_VERSION}}
+Exact current versions are authoritative in `suite.config.json` (synchronized into `build/Suite.Generated.props` by `scripts/suite_metadata.py sync`), not duplicated here:
+
+- Jotunn: `jotunnVersion`
+- BepInExPack Valheim: `bepInExPackVersion`
 - plugin target: net48
-- C# language version: {{CSHARP_LANG_VERSION}}
-- Microsoft.NETFramework.ReferenceAssemblies {{NETFX_REF_VERSION}} for cross-platform net48 targeting
+- C# language version: `csharpLanguageVersion`
+- Microsoft.NETFramework.ReferenceAssemblies: `netFrameworkReferenceAssembliesVersion`, for cross-platform net48 targeting
 
 ## Initial milestones
 
