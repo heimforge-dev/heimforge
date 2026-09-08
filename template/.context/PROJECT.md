@@ -20,7 +20,7 @@ Canonical development environment: **WSL/Linux**.
 - Bash/WSL scripts define the only canonical project workflow
 - `suite.config.json` is the editable source of truth for supported mutable suite/project/package metadata; generation-time suite identity (`suiteName`, `rootNamespace`) is locked in `suite.identity.lock.json`
 
-Keep the repository in the WSL filesystem, for example `~/src/valheim-mod-suite`, rather than under `/mnt/c`.
+Keep the repository in the WSL filesystem, for example `~/src/{{ROOT_NAMESPACE_LOWER}}`, rather than under `/mnt/c`.
 
 ## Platform
 

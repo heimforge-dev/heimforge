@@ -47,13 +47,53 @@ TEMPLATE_DIR = ROOT / "template"
 
 # First character alphabetic/underscore (matches every current token's
 # convention), remaining characters may also be digits -- e.g.
-# `PROJECT_SPEC_MILESTONE2_BODY`. This single regex backs template token
-# discovery, substitution, `validate_template()`'s known-token check, and
-# `validate_generated.py`'s unresolved-token detection (which imports this
-# exact pattern) -- one definition so the renderer can never recognize a
-# token name unresolved-token validation would fail to recognize, or vice
-# versa.
+# `PROJECT_SPEC_MILESTONE2_BODY`. This single regex is the renderer's own
+# token *grammar*: it backs template token discovery, substitution, and
+# `validate_template()`'s known-token check against `KNOWN_TOKENS` --
+# whether a `{{...}}` in template *source* is a legal, recognized token.
 TOKEN_RE = re.compile(r"\{\{([A-Z_][A-Z0-9_]*)\}\}")
+
+# Deliberately broader than `TOKEN_RE`: `validate_generated.py` imports
+# this to catch *any* `{{...}}`-shaped marker surviving in final generated
+# output -- lowercase, malformed, digit-led, hyphenated, spaced, or empty
+# names included -- not just ones that happen to be legal token syntax.
+# Generated output has no legitimate reason to contain literal `{{`/`}}`
+# delimiters at all (no template file uses them for anything but token
+# substitution -- `template/scripts/suite_metadata.py`'s f-string escapes
+# for literal C# braces are the one place double braces appear outside a
+# token, and real interpolated `{expr}` characters always sit between
+# that file's `{{`/`}}` pair, so the "no brace inside" class below never
+# matches across them). Keeping this separate from `TOKEN_RE` is
+# intentional, not an oversight: `TOKEN_RE` must stay narrow so the
+# renderer/`validate_template()` still reject an unknown token in
+# template *source*; this one must stay broad so no unresolved-looking
+# marker of any shape can slip through final-output validation.
+UNRESOLVED_MARKER_RE = re.compile(r"\{\{[^{}]*\}\}")
+
+# `UNRESOLVED_MARKER_RE`'s "no brace inside" class is deliberately blind to
+# a marker mangled by exactly one stray interior brace, e.g. `{{BAD}1}}` or
+# `{{BAD{1}}}` -- adversarial garbage that still reads as an attempted
+# template token. This catches that shape: `{{` immediately followed by a
+# *token-like* character run (letters/digits/space/hyphen/underscore --
+# the same charset every real marker in `UNRESOLVED_MARKER_RE`'s matrix
+# uses), then exactly one single stray `{` or `}`, then more token-like
+# characters, then a closing `}}`. Checked across every generated file in
+# all seven optional-module combinations, `template/scripts/suite_metadata.py`'s
+# f-string brace-escape (the one legitimate doubled-brace construct in
+# generated output) is the sole doubled-brace occurrence anywhere, and its
+# `{{` is immediately followed by a literal backslash-n, not a token-like
+# character -- so it can never match here, and there is no evidence any
+# legitimate generated source needs this shape. `{{BAD{1}}}` is therefore
+# rejected the same as `{{BAD}1}}`, not treated as legitimate nested
+# interpolation syntax.
+MALFORMED_MARKER_RE = re.compile(r"\{\{[A-Za-z0-9_ -]+[{}][A-Za-z0-9_ -]*\}\}")
+
+# The one path-sentinel segment `_render_plan()` substitutes with the real
+# root namespace (see `template_manifest.py`'s module docstring). A single
+# definition so `validate_generated.py`'s unresolved-path-sentinel check
+# can never drift from what the renderer actually substitutes.
+ROOT_NAMESPACE_PATH_SENTINEL = "__ROOT_NAMESPACE__"
+
 KNOWN_TOKENS = {
     "SUITE_NAME",
     "ROOT_NAMESPACE",
@@ -236,7 +276,7 @@ def _render_plan(model: ProjectModel) -> list[tuple[str, str]]:
     plan: list[tuple[str, str]] = []
     seen: dict[str, str] = {}
     for rel in sorted(_manifest_files_for(model)):
-        dest = "/".join(part.replace("__ROOT_NAMESPACE__", root_namespace) for part in rel.split("/"))
+        dest = "/".join(part.replace(ROOT_NAMESPACE_PATH_SENTINEL, root_namespace) for part in rel.split("/"))
         normalized = posixpath.normpath(dest)
         if normalized != dest or normalized == ".." or normalized.startswith("../") or posixpath.isabs(normalized):
             raise RenderError(f"rendered destination for {rel!r} escapes the output root: {dest!r}")

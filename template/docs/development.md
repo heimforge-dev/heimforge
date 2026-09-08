@@ -2,7 +2,7 @@
 
 ## Canonical environment
 
-Develop from WSL/Linux. Recommended repository location: `~/src/valheim-mod-suite`.
+Develop from WSL/Linux. Recommended repository location: `~/src/{{ROOT_NAMESPACE_LOWER}}`.
 
 Avoid putting the repository under `/mnt/c/...`. Windows remains the actual Valheim client runtime and is accessed through its WSL mount path.
 
