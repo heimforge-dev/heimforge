@@ -12,6 +12,47 @@ Current generated package families:
 
 The ZIP layout installs DLLs under `BepInEx/plugins/<SuiteName>/` and includes `package-info.json`, README, and changelog.
 
+## Evaluated artifact contract
+
+Metadata `check` and `sync`, packaging, deployment, and preflight (including
+`--portable`) require a .NET SDK. For Debug and Release, the trusted metadata
+script evaluates each canonical project with MSBuild's structured property API:
+
+```text
+dotnet msbuild src/<Project>/<Project>.csproj -nologo -getProperty:<contract-properties> -property:<solution-global>=<value> ...
+```
+
+The supplied globals are the complete set empirically observed on child
+projects during the canonical solution build: `Configuration`, `Platform`,
+`BuildingSolutionFile`, `SolutionDir`, `SolutionPath`, `SolutionName`,
+`SolutionFileName`, `SolutionExt`, and
+`CurrentSolutionConfigurationContents`. The latter is derived from the already
+validated canonical solution entries and Debug/Release Any CPU mappings.
+Validation also compares every returned global against that expected context.
+
+MSBuild—not project code—produces the structured JSON. Certification executes
+no project target and exposes no report destination or secret to evaluated
+projects. Project bodies, imported props/targets, project target definitions,
+and project-written report files are untrusted; they cannot replace the
+external `-getProperty` producer. The trusted inputs are the metadata script,
+suite metadata, and canonical solution structure after their existing
+validation.
+
+Every configured project must evaluate with its canonical path,
+`Platform=AnyCPU`, `BuildingSolutionFile=true`, `AssemblyName` equal to its
+project name, and `TargetFramework` equal to `netstandard2.0` for Common or
+`net48` for every runtime scope. Evaluation does not restore, compile, resolve
+references, or require Valheim/BepInEx/Jötunn assemblies. A missing SDK,
+evaluation failure/timeout, malformed structured output, missing/unexpected
+property, or mismatch fails closed before package cleanup or deployment
+transactions.
+
+`suite_metadata.py check --structural-only` and `sync --structural-only` are
+bootstrap/scaffold operations, **not artifact certification**. They preserve
+no-dotnet generation and allow the initial generated props to be written before
+MSBuild can import them. Package/deploy never use this option. Do not substitute
+it for the full check when preparing artifacts.
+
 ## Public release gate
 
 Before preparing a public Thunderstore release:

@@ -612,7 +612,7 @@ def generate(
             )
 
             sync = subprocess.run(
-                ["python3", "scripts/suite_metadata.py", "sync"],
+                ["python3", "scripts/suite_metadata.py", "sync", "--structural-only"],
                 cwd=staging_dir,
                 env=NO_BYTECODE_ENV,
                 text=True,

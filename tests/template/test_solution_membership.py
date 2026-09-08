@@ -77,7 +77,7 @@ def _write_csproj(output_dir: Path, project: str, tfm: str) -> None:
     project_dir = output_dir / "src" / project
     project_dir.mkdir(parents=True, exist_ok=True)
     (project_dir / f"{project}.csproj").write_text(
-        f"<Project><PropertyGroup><TargetFramework>{tfm}</TargetFramework>"
+        f'<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>{tfm}</TargetFramework>'
         f"<AssemblyName>{project}</AssemblyName></PropertyGroup></Project>",
         encoding="utf-8",
     )

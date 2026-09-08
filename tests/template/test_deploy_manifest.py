@@ -589,7 +589,8 @@ class ManifestDirectoryFsyncOrderingTests(DeployFixtureTestCase):
             return real_replace(src, dst, *args, **kwargs)
 
         def _unlink(path, *args, **kwargs):
-            events.append(f"unlink:{path}")
+            if kwargs.get("dir_fd") == dir_fd_holder.get("dir_fd"):
+                events.append(f"unlink:{path}")
             return real_unlink(path, *args, **kwargs)
 
         argv = ["deploy.py", "--target", "server", "--configuration", "Debug", "--destination", str(dest_dir)]
@@ -641,7 +642,8 @@ class ManifestDirectoryFsyncFailureTests(DeployFixtureTestCase):
             return real_fsync(fd)
 
         def _unlink(path, *args, **kwargs):
-            unlink_calls.append(path)
+            if kwargs.get("dir_fd") == dir_fd_holder.get("dir_fd"):
+                unlink_calls.append(path)
             return real_unlink(path, *args, **kwargs)
 
         argv = ["deploy.py", "--target", "server", "--configuration", "Debug", "--destination", str(dest_dir)]

@@ -264,7 +264,7 @@ class ErrorQualityTests(unittest.TestCase):
 
     def test_valid_but_changed_root_namespace_is_reported_as_immutable(self) -> None:
         cfg = dict(self.cfg, rootNamespace="Renamed")
-        self.metadata.validate(cfg)  # syntactically fine
+        self.metadata.validate(cfg, structural_only=True)  # syntactically fine
         with self.assertRaises(self.metadata.MetadataError) as ctx:
             self.metadata.validate_identity(cfg)
         message = str(ctx.exception)

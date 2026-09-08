@@ -24,6 +24,7 @@
 - Replaced placeholder packaging with deterministic local ZIPs and SHA-256 checksums.
 - Added repository scaffold regression tests.
 - Added explicit public-release metadata gate.
+- Certify generated project TargetFramework/AssemblyName through structured, evaluation-only MSBuild property queries in the canonical Debug/Release solution context. The trusted metadata script derives and verifies every solution global; project targets/imports cannot forge an artifact report or ship stale canonical-path artifacts. Preserve explicitly non-certifying structural bootstrap operations without dotnet.
 
 ### Bootstrapper
 

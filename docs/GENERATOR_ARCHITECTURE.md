@@ -27,6 +27,37 @@ Their content structurally depends on which optional modules (`ServerCore`, `Cli
 
 `projects`/`packages` stay ordinary mutable structural metadata -- the architecture deliberately supports adding a new, physically-created project after generation -- but `suite_metadata.py`'s `validate_solution_membership()` (called alongside `validate_identity()`, after it, from the same four entry points) additionally requires `cfg['projects']`'s key set to exactly equal the C# projects `<rootNamespace>.sln` actually declares under `src/` (parsed narrowly from the bootstrapper's own `Project(...)`/`EndProject` line shape, ignoring the generated `tests/` project and any non-C#-project entry by path/type rather than by accident). Adding or removing a project is therefore a three-step, explicit workflow -- add/remove the `.csproj`, add/remove the matching `.sln` entry, then update `suite.config.json` and run `sync`/`check` -- never an automatic `.sln` rewrite. A mismatch in either direction (configured but unbuilt, or built but unconfigured) fails before any generated file or deployment/package output is touched.
 
+### Evaluated artifact identity and bootstrap portability
+
+Generated `suite_metadata.validate()` evaluates each canonical project with
+MSBuild's structured `-getProperty` API for Debug and Release. It supplies the
+complete global-property set empirically observed on projects under
+`dotnet build <solution> -c <configuration>`:
+`Configuration`, `Platform`, `BuildingSolutionFile`,
+`CurrentSolutionConfigurationContents`, and the five standard `Solution*`
+properties. The solution-configuration XML is derived from the already
+validated canonical project entries and exact Debug/Release Any CPU mappings.
+Metadata compares all returned globals plus project path, framework, and
+assembly name, requiring `Platform=AnyCPU`, the canonical assembly name, and
+the scope's framework (`netstandard2.0` for Common, `net48` for runtime
+projects).
+
+This is an external, evaluation-only observation channel: MSBuild emits the
+structured JSON, no project target runs, and no report destination is exposed.
+The metadata script, suite metadata, and validated solution are trusted;
+project bodies, imported props/targets, project-defined targets, and
+project-written reports are not. Package/deploy keep using their existing
+metadata gate; neither owns a second evaluator.
+
+Initial staging sync uses `--structural-only` because its generated props do not
+exist yet. The scaffold suite also checks structural synchronization only.
+Post-generation validation performs full certification when dotnet is present;
+without it, validation explicitly reports that the MSBuild artifact contract
+was not certified. Default metadata commands and all artifact-consuming
+workflows fail closed without successful MSBuild evaluation. Generated portable
+preflight still requires dotnet; "portable" skips machine-specific game checks,
+not semantic project validation.
+
 ## Generation pipeline
 
 1. `validate_params()` — reject malformed suite name, namespace, GUID root, author, Thunderstore namespace, or version; `validate_params()` also calls `build_model()`, which rejects a selection with every optional module (`ServerCore`, `Client`, `Shared.Diagnostics`) disabled -- Common alone builds no runtime BepInEx plugin, so this fails before the approved destination is ever touched (see `docs/TEMPLATE_MAINTENANCE.md`'s "The empty-runtime invariant").
@@ -35,7 +66,7 @@ Their content structurally depends on which optional modules (`ServerCore`, `Cli
 4. `build_model()` — derive the concrete `ModuleSpec` set (`Common` always; `ServerCore`/`Client`/`Shared.Diagnostics` per include flags).
 5. `render_tree()` — render the manifest-approved files (filtered to the included optional modules) into a disposable staging directory, substituting tokens, after `_render_plan()` has containment- and collision-checked every destination.
 6. Write the generated `suite.config.json`, `<RootNamespace>.sln`, and `suite.identity.lock.json`.
-7. Run `python3 scripts/suite_metadata.py sync` inside the staging directory to produce `build/Suite.Generated.props`, `src/<RootNamespace>.Common/SuiteConstants.Generated.cs`, and `packaging/profile-lock.json` — reusing the generated project's own logic rather than duplicating it here.
+7. Run `python3 scripts/suite_metadata.py sync --structural-only` inside the staging directory to produce `build/Suite.Generated.props`, `src/<RootNamespace>.Common/SuiteConstants.Generated.cs`, and `packaging/profile-lock.json` — reusing the generated project's own logic rather than duplicating it here.
 8. Copy the fully-rendered staging directory to a disposable validation directory and run `validate_generated()` against *that copy* — structural and (when possible) executable proof that the staged output is sound — then discard the copy regardless of outcome.
 9. Promote the original, never-executed-against staging directory into the approved destination transactionally (see the transaction-safety guarantees documented at the top of `create_project.py`).
 10. Print the summary: solution path, generated projects, validation result, and next steps.

@@ -14,9 +14,9 @@ class ScaffoldTests(unittest.TestCase):
     def setUpClass(cls):
         cls.cfg = json.loads((ROOT / "suite.config.json").read_text(encoding="utf-8"))
 
-    def test_metadata_is_synchronized(self):
+    def test_metadata_is_structurally_synchronized(self):
         result = subprocess.run(
-            ["python3", "scripts/suite_metadata.py", "check"],
+            ["python3", "scripts/suite_metadata.py", "check", "--structural-only"],
             cwd=ROOT,
             text=True,
             stdout=subprocess.PIPE,

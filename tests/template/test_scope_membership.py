@@ -143,10 +143,10 @@ class MembershipMatrixTests(unittest.TestCase):
                 project = f"Sampleheim.Case{index}"
                 _add_project(self.root, cfg, project, scope, groups)
                 if valid:
-                    self.metadata.validate(cfg)
+                    self.metadata.validate(cfg, structural_only=True)
                 else:
                     with self.assertRaises(self.metadata.MetadataError):
-                        self.metadata.validate(cfg)
+                        self.metadata.validate(cfg, structural_only=True)
 
 
 class ExistingSafetyInvariantsStillHoldTests(unittest.TestCase):
@@ -223,7 +223,7 @@ class EffectivePackageDeploymentTests(unittest.TestCase):
     def test_shared_required_reaches_server_and_required_client_sides(self) -> None:
         project = "Sampleheim.Shared.Required"
         _add_project(self.root, self.cfg, project, "sharedRequired", {"serverModules", "requiredClientModules"})
-        self.metadata.validate(self.cfg)
+        self.metadata.validate(self.cfg, structural_only=True)
 
         self.assertIn(project, self.deploy.modules_for(self.cfg, "server"))
         self.assertIn(project, self.deploy.modules_for(self.cfg, "client"))
@@ -236,7 +236,7 @@ class EffectivePackageDeploymentTests(unittest.TestCase):
     def test_shared_optional_reaches_server_and_optional_client_sides(self) -> None:
         project = "Sampleheim.Shared.Optional"
         _add_project(self.root, self.cfg, project, "sharedOptional", {"serverModules", "optionalClientModules"})
-        self.metadata.validate(self.cfg)
+        self.metadata.validate(self.cfg, structural_only=True)
 
         self.assertIn(project, self.deploy.modules_for(self.cfg, "server"))
         self.assertIn(project, self.deploy.modules_for(self.cfg, "client"))
@@ -249,7 +249,7 @@ class EffectivePackageDeploymentTests(unittest.TestCase):
     def test_client_only_reaches_client_side_only(self) -> None:
         project = "Sampleheim.ClientOnly"
         _add_project(self.root, self.cfg, project, "clientOnly", {"clientOnlyModules"})
-        self.metadata.validate(self.cfg)
+        self.metadata.validate(self.cfg, structural_only=True)
 
         self.assertNotIn(project, self.deploy.modules_for(self.cfg, "server"))
         self.assertIn(project, self.deploy.modules_for(self.cfg, "client"))
@@ -261,7 +261,7 @@ class EffectivePackageDeploymentTests(unittest.TestCase):
     def test_server_only_reaches_server_side_only(self) -> None:
         project = "Sampleheim.ServerOnly"
         _add_project(self.root, self.cfg, project, "serverOnly", {"serverModules"})
-        self.metadata.validate(self.cfg)
+        self.metadata.validate(self.cfg, structural_only=True)
 
         self.assertIn(project, self.deploy.modules_for(self.cfg, "server"))
         self.assertNotIn(project, self.deploy.modules_for(self.cfg, "client"))

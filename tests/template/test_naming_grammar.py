@@ -328,7 +328,7 @@ class SuiteNameLengthAlignmentTests(unittest.TestCase):
         metadata, _pkg = import_scripts_from(output_dir / "scripts")
         cfg = json.loads((output_dir / "suite.config.json").read_text(encoding="utf-8"))
         cfg["suiteName"] = "S" * metadata.MAX_SUITE_NAME_LENGTH
-        metadata.validate(cfg)
+        metadata.validate(cfg, structural_only=True)
 
     def test_generated_validator_rejects_suite_name_over_max_length(self):
         _params, output_dir, result = generate_into_temp()

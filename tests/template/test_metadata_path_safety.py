@@ -921,7 +921,7 @@ class TemporaryEntrySubstitutionTests(unittest.TestCase):
         root = copy_template_to_temp()
         metadata, _pkg = _import_scripts_from(root / "scripts")
         target = root / "build" / "race.generated"
-        target.parent.mkdir()
+        target.parent.mkdir(exist_ok=True)
         target.write_bytes(b"existing generated text")
         external = Path(tempfile.mkdtemp(prefix="valheimsuite-temp-text-")) / "sentinel"
         external.write_bytes(b"external sentinel")
@@ -1084,7 +1084,7 @@ class PostVerificationSubstitutionTests(unittest.TestCase):
         root = copy_template_to_temp()
         metadata, _pkg = _import_scripts_from(root / "scripts")
         target = root / "build" / "race.generated"
-        target.parent.mkdir()
+        target.parent.mkdir(exist_ok=True)
         target.write_bytes(b"existing generated text")
         target.chmod(0o640)
         original_mode = stat.S_IMODE(target.stat().st_mode)
@@ -1104,7 +1104,7 @@ class PostVerificationSubstitutionTests(unittest.TestCase):
         root = copy_template_to_temp()
         metadata, _pkg = _import_scripts_from(root / "scripts")
         target = root / "build" / "race.generated"
-        target.parent.mkdir()
+        target.parent.mkdir(exist_ok=True)
         external, external_mode = self._external_sentinel("valheimsuite-postverify-text-absent-")
 
         with _inject_after_verify(metadata, external):
@@ -1226,7 +1226,7 @@ class RecoverySubstitutionTests(unittest.TestCase):
         root = copy_template_to_temp()
         metadata, _pkg = _import_scripts_from(root / "scripts")
         target = root / "build" / "race.generated"
-        target.parent.mkdir()
+        target.parent.mkdir(exist_ok=True)
         target.write_bytes(b"existing generated text")
         self._run_recovery_case(
             metadata,
@@ -1241,7 +1241,7 @@ class RecoverySubstitutionTests(unittest.TestCase):
         root = copy_template_to_temp()
         metadata, _pkg = _import_scripts_from(root / "scripts")
         target = root / "build" / "race.generated"
-        target.parent.mkdir()
+        target.parent.mkdir(exist_ok=True)
         target.write_bytes(b"existing generated text")
         self._run_recovery_case(
             metadata,
@@ -1346,7 +1346,7 @@ class RecoveryAllocationFailureTests(unittest.TestCase):
         root = copy_template_to_temp()
         metadata, _pkg = _import_scripts_from(root / "scripts")
         target = root / "build" / "race.generated"
-        target.parent.mkdir()
+        target.parent.mkdir(exist_ok=True)
         target.write_bytes(b"existing generated text")
         self._run_case(
             metadata, target, lambda: metadata.atomic_write_text(target, "new generated text"), metadata.MetadataError
@@ -1395,7 +1395,7 @@ class RecoveryRetryExhaustionTests(unittest.TestCase):
         root = copy_template_to_temp()
         metadata, _pkg = _import_scripts_from(root / "scripts")
         target = root / "build" / "race.generated"
-        target.parent.mkdir()
+        target.parent.mkdir(exist_ok=True)
         target.write_bytes(b"existing generated text")
         external, mode = self._external_sentinel("valheimsuite-exhausted-text-")
 
@@ -1443,7 +1443,7 @@ class RecoveryRetryExhaustionTests(unittest.TestCase):
         root = copy_template_to_temp()
         metadata, _pkg = _import_scripts_from(root / "scripts")
         target = root / "build" / "race.generated"
-        target.parent.mkdir()
+        target.parent.mkdir(exist_ok=True)
         target.write_bytes(b"existing generated text")
         external, mode = self._external_sentinel("valheimsuite-cleanup-fail-")
 
@@ -1688,7 +1688,7 @@ class RecoveryZeroProgressWriteTests(unittest.TestCase):
         root = copy_template_to_temp()
         metadata, _pkg = _import_scripts_from(root / "scripts")
         target = root / "build" / "race.generated"
-        target.parent.mkdir()
+        target.parent.mkdir(exist_ok=True)
         target.write_bytes(b"existing generated text")
         self._run_case(
             metadata, target, lambda: metadata.atomic_write_text(target, "new generated text"), metadata.MetadataError

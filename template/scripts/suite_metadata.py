@@ -7,6 +7,7 @@ import json
 import os
 import re
 import stat
+import subprocess
 import sys
 import unicodedata
 import uuid
@@ -396,7 +397,7 @@ def contain(path: Path, root: Path, *, error_cls: type[Exception] = MetadataErro
     return path
 
 
-def validate(cfg: dict, release: bool = False) -> None:
+def validate(cfg: dict, release: bool = False, *, structural_only: bool = False) -> None:
     if type(cfg.get("schemaVersion")) is not int or cfg.get("schemaVersion") != 1:
         raise MetadataError("schemaVersion must be the JSON integer 1")
 
@@ -540,6 +541,76 @@ def validate(cfg: dict, release: bool = False) -> None:
             bad.append("pluginGuidRoot")
         if bad:
             raise MetadataError("Public-release metadata is incomplete: " + ", ".join(bad))
+
+    if not structural_only:
+        validate_effective_projects(cfg)
+
+
+def solution_evaluation_properties(sln_text: str, solution: Path, configuration: str) -> dict[str, str]:
+    project_rows = []
+    for line in sln_text.splitlines():
+        match = SOLUTION_PROJECT_LINE.fullmatch(line.strip())
+        if match is None or match.group("type_guid").upper() != CSHARP_PROJECT_TYPE_GUID:
+            continue
+        project_path = os.path.abspath(ROOT / match.group("path").replace("\\", "/"))
+        escaped_path = project_path.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+        project_rows.append(
+            f'  <ProjectConfiguration Project="{match.group("project_guid").upper()}" '
+            f'AbsolutePath="{escaped_path}" BuildProjectInSolution="True">'
+            f"{configuration}|AnyCPU</ProjectConfiguration>"
+        )
+    contents = "<SolutionConfiguration>\n" + "\n".join(project_rows) + "\n</SolutionConfiguration>"
+    return {
+        "Configuration": configuration,
+        "Platform": "AnyCPU",
+        "BuildingSolutionFile": "true",
+        "CurrentSolutionConfigurationContents": contents,
+        "SolutionDir": str(ROOT) + os.sep,
+        "SolutionPath": str(solution),
+        "SolutionName": solution.stem,
+        "SolutionFileName": solution.name,
+        "SolutionExt": solution.suffix,
+    }
+
+
+def validate_effective_projects(cfg: dict) -> None:
+    """Evaluate canonical projects with the complete solution global context."""
+    validate_identity(cfg)
+    validate_solution_membership(cfg)
+    solution = ROOT / f"{cfg['rootNamespace']}.sln"
+    sln_text = solution.read_text(encoding="utf-8")
+    for configuration in ("Debug", "Release"):
+        globals_ = solution_evaluation_properties(sln_text, solution, configuration)
+        for project, item in cfg["projects"].items():
+            context = f"project {project} for {configuration}|AnyCPU"
+            csproj = ROOT / "src" / project / f"{project}.csproj"
+            expected = {
+                "MSBuildProjectFullPath": str(csproj),
+                **globals_,
+                "TargetFramework": item["targetFramework"],
+                "AssemblyName": project,
+            }
+            command = ["dotnet", "msbuild", str(csproj), "-nologo",
+                       f"-getProperty:{','.join(expected)}"]
+            for name, value in globals_.items():
+                escaped = re.sub(r"""[%$@();'"?,*]""", lambda match: f"%{ord(match[0]):02X}", value)
+                command.append(f"-property:{name}={escaped}")
+            try:
+                result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, timeout=60)
+                if result.returncode:
+                    raise MetadataError(
+                        f"cannot evaluate {context}: MSBuild exited {result.returncode}: "
+                        f"{result.stdout.strip()} {result.stderr.strip()}"
+                    )
+                properties = json.loads(result.stdout)["Properties"]
+                if not isinstance(properties, dict) or properties.keys() != expected.keys():
+                    raise ValueError("missing, duplicate, or unexpected evaluated properties")
+                for name, value in expected.items():
+                    actual = properties[name]
+                    if actual != value:
+                        raise MetadataError(f"{context} evaluates {name}={actual!r}; expected {value!r}")
+            except (OSError, subprocess.TimeoutExpired, ValueError, KeyError, TypeError, UnicodeError) as exc:
+                raise MetadataError(f"cannot evaluate {context}: {exc}") from exc
 
 
 def package_definitions(cfg: dict) -> list[tuple[str, list[str], str]]:
@@ -1201,8 +1272,8 @@ def atomic_write_text(
             parent.close()
 
 
-def sync(cfg: dict) -> None:
-    validate(cfg)
+def sync(cfg: dict, *, structural_only: bool = False) -> None:
+    validate(cfg, structural_only=structural_only)
     validate_identity(cfg)
     validate_solution_membership(cfg)
     outputs: list[tuple[Path, str, _OutputParent, _FinalTarget]] = []
@@ -1224,8 +1295,8 @@ def sync(cfg: dict) -> None:
             parent.close()
 
 
-def check(cfg: dict, release: bool = False) -> None:
-    validate(cfg, release=release)
+def check(cfg: dict, release: bool = False, *, structural_only: bool = False) -> None:
+    validate(cfg, release=release, structural_only=structural_only)
     validate_identity(cfg)
     validate_solution_membership(cfg)
     mismatches = []
@@ -1238,22 +1309,30 @@ def check(cfg: dict, release: bool = False) -> None:
             mismatches.append(f"stale generated file {path.relative_to(ROOT)}")
     if mismatches:
         raise MetadataError("; ".join(mismatches) + ". Run: python3 scripts/suite_metadata.py sync")
-    print("suite metadata: valid and synchronized")
+    if structural_only:
+        print("suite metadata: structurally synchronized; MSBuild artifact contract NOT certified")
+    else:
+        print("suite metadata: valid and synchronized")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("sync", help="Regenerate committed metadata outputs from suite.config.json")
+    sync_parser = sub.add_parser("sync", help="Regenerate committed metadata outputs from suite.config.json")
     check_parser = sub.add_parser("check", help="Validate config and generated outputs")
     check_parser.add_argument("--release", action="store_true", help="Also require public-release naming metadata")
+    for command_parser in (sync_parser, check_parser):
+        command_parser.add_argument(
+            "--structural-only", action="store_true",
+            help="Bootstrap/scaffold only: skip MSBuild evaluation; does NOT certify build artifacts",
+        )
     args = parser.parse_args()
     try:
         cfg = load_config()
         if args.command == "sync":
-            sync(cfg)
+            sync(cfg, structural_only=args.structural_only)
         else:
-            check(cfg, release=args.release)
+            check(cfg, release=args.release, structural_only=args.structural_only)
         return 0
     except MetadataError as exc:
         print(f"metadata error: {exc}", file=sys.stderr)

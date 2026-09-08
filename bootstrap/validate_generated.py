@@ -173,8 +173,12 @@ def validate_generated(output_dir: Path, params: ProjectParams) -> ValidationRes
     if any(scopes[m] == "serverOnly" for m in client):
         r.errors.append("client package set contains a serverOnly project")
 
+    metadata_command = ["python3", "scripts/suite_metadata.py", "check"]
+    if shutil.which("dotnet") is None:
+        metadata_command.append("--structural-only")
+        r.skipped.append("dotnet not installed: MSBuild artifact contract NOT certified")
     proc = subprocess.run(
-        ["python3", "scripts/suite_metadata.py", "check"],
+        metadata_command,
         cwd=output_dir,
         env=NO_BYTECODE_ENV,
         text=True,
