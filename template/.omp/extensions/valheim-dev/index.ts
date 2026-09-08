@@ -150,6 +150,55 @@ function ensureRelativeManagedPath(value: string): string {
   return normalized;
 }
 
+export function isPathInside(root: string, target: string): boolean {
+  const relative = path.relative(root, target);
+  return (
+    relative !== "" &&
+    relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
+}
+
+export async function resolveCanonicalManagedRoot(managed: string): Promise<string> {
+  let canonical: string;
+  try {
+    canonical = await fs.realpath(managed);
+  } catch (error) {
+    throw new Error(`Valheim Managed directory not found or unresolvable: ${managed} (${String(error)})`);
+  }
+  const stat = await fs.stat(canonical).catch((error) => {
+    throw new Error(`Valheim Managed directory not accessible: ${canonical} (${String(error)})`);
+  });
+  if (!stat.isDirectory()) {
+    throw new Error(`Valheim Managed path is not a directory: ${canonical}`);
+  }
+  return canonical;
+}
+
+export async function resolveCanonicalManagedAssembly(canonicalManagedRoot: string, relative: string): Promise<string> {
+  const lexical = path.resolve(canonicalManagedRoot, relative);
+  let canonical: string;
+  try {
+    canonical = await fs.realpath(lexical);
+  } catch (error) {
+    throw new Error(`Assembly not found or unresolvable: ${relative} (${String(error)})`);
+  }
+  if (canonical === canonicalManagedRoot) {
+    throw new Error("assembly must be a file under valheim_Data/Managed, not the Managed directory itself");
+  }
+  if (!isPathInside(canonicalManagedRoot, canonical)) {
+    throw new Error("assembly resolves outside the configured Valheim Managed directory");
+  }
+  const stat = await fs.stat(canonical).catch((error) => {
+    throw new Error(`Assembly not accessible: ${relative} (${String(error)})`);
+  });
+  if (!stat.isFile()) {
+    throw new Error(`Assembly path is not a regular file: ${relative}`);
+  }
+  return canonical;
+}
+
 async function tailFile(file: string, lineCount: number): Promise<string> {
   const raw = await fs.readFile(file, "utf8");
   return raw.split(/\r?\n/).slice(-lineCount).join("\n").trim();
@@ -245,11 +294,9 @@ export default function valheimDev(pi: ExtensionAPI) {
       const root = await findProjectRoot(ctx.cwd);
       const cfg = await loadDevConfig(root);
       const managed = path.join(path.resolve(cfg.valheimInstall), "valheim_Data", "Managed");
+      const canonicalManagedRoot = await resolveCanonicalManagedRoot(managed);
       const relative = ensureRelativeManagedPath(params.assembly);
-      const assembly = path.resolve(managed, relative);
-      const managedRoot = path.resolve(managed) + path.sep;
-      if (!assembly.startsWith(managedRoot)) throw new Error("resolved assembly path escapes valheim_Data/Managed");
-      if (!(await fileExists(assembly))) throw new Error(`Assembly not found: ${assembly}`);
+      const assembly = await resolveCanonicalManagedAssembly(canonicalManagedRoot, relative);
       let output = await run("ilspycmd", ["-t", params.type, assembly], root, signal);
       if (params.contains) {
         const needle = params.contains.toLowerCase();
