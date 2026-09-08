@@ -224,7 +224,32 @@ def _dir_content_state(fd: int) -> tuple[bool, bool]:
     return not names, bool(names & set(_VCS_MARKERS))
 
 
-def _clear_dir_contents(fd: int, *, protect_markers: bool = False) -> None:
+def _mount_id(fd: int) -> int:
+    """Linux fdinfo identifies bind mounts even when st_dev is unchanged."""
+    try:
+        with open(f"/proc/self/fdinfo/{fd}", encoding="ascii") as info:
+            ids = [int(line.split()[1]) for line in info if line.startswith("mnt_id:")]
+        if len(ids) == 1 and ids[0] > 0:
+            return ids[0]
+    except (OSError, ValueError, IndexError) as exc:
+        raise OSError("cannot determine directory mount identity") from exc
+    raise OSError("cannot determine directory mount identity")
+
+
+def _check_directory_mounts(fd: int, mount_id: int) -> None:
+    if _mount_id(fd) != mount_id:
+        raise OSError("refusing recursive cleanup across a nested mount boundary")
+    with os.scandir(fd) as entries:
+        for entry in entries:
+            if entry.is_dir(follow_symlinks=False):
+                child_fd = _open_dir_at(entry.name, fd)
+                try:
+                    _check_directory_mounts(child_fd, mount_id)
+                finally:
+                    os.close(child_fd)
+
+
+def _clear_dir_contents(fd: int, *, protect_markers: bool = False, mount_id: int | None = None) -> None:
     """Recursively remove everything inside the directory referenced by
     `fd`.
 
@@ -241,18 +266,23 @@ def _clear_dir_contents(fd: int, *, protect_markers: bool = False) -> None:
     inside ordinary subdirectories are cleared normally — this mirrors
     the VCS check's own top-level-only scope, not a new policy.
     """
-    for entry in os.scandir(fd):
-        if protect_markers and entry.name in _VCS_MARKERS:
-            continue
-        if entry.is_dir(follow_symlinks=False):
-            child_fd = _open_dir_at(entry.name, fd)
-            try:
-                _clear_dir_contents(child_fd)
-            finally:
-                os.close(child_fd)
-            os.rmdir(entry.name, dir_fd=fd)
-        else:
-            os.unlink(entry.name, dir_fd=fd)
+    if mount_id is None:
+        mount_id = _mount_id(fd)
+    elif _mount_id(fd) != mount_id:
+        raise OSError("refusing recursive cleanup across a nested mount boundary")
+    with os.scandir(fd) as entries:
+        for entry in entries:
+            if protect_markers and entry.name in _VCS_MARKERS:
+                continue
+            if entry.is_dir(follow_symlinks=False):
+                child_fd = _open_dir_at(entry.name, fd)
+                try:
+                    _clear_dir_contents(child_fd, mount_id=mount_id)
+                finally:
+                    os.close(child_fd)
+                os.rmdir(entry.name, dir_fd=fd)
+            else:
+                os.unlink(entry.name, dir_fd=fd)
 
 
 def _remove_dir_at(name: str, dir_fd: int, *, fd: int | None = None) -> None:
@@ -341,6 +371,7 @@ class _DestinationApproval:
     name: str
     initial: _EntryState
     initially_empty: bool
+    mount_id: int | None
 
 
 def _open_validated_parent_dir(parent: Path, name: str) -> int:
@@ -404,7 +435,7 @@ def _approve_destination(candidate: Path, force: bool) -> _DestinationApproval:
     nominal = parent / name
     _validate_output_location(nominal)
 
-    parent.mkdir(parents=True, exist_ok=True)
+    naming.validate_component_length(f".{name}.isolated-" + "0" * 32, "output backup directory")
     parent_fd = _open_validated_parent_dir(parent, name)
     try:
         initial = _lstat_entry_at(name, parent_fd)
@@ -414,10 +445,12 @@ def _approve_destination(candidate: Path, force: bool) -> _DestinationApproval:
             raise GenerationError(f"refusing output directory that is not a directory: {nominal}")
 
         initially_empty = True
+        mount_id = None
         if initial.exists:
             child_fd = _open_dir_at(name, parent_fd)
             try:
                 initially_empty, has_vcs_marker = _dir_content_state(child_fd)
+                mount_id = _mount_id(child_fd)
             finally:
                 os.close(child_fd)
             if has_vcs_marker:
@@ -428,7 +461,9 @@ def _approve_destination(candidate: Path, force: bool) -> _DestinationApproval:
         os.close(parent_fd)
         raise
 
-    return _DestinationApproval(parent_fd=parent_fd, name=name, initial=initial, initially_empty=initially_empty)
+    return _DestinationApproval(
+        parent_fd=parent_fd, name=name, initial=initial, initially_empty=initially_empty, mount_id=mount_id
+    )
 
 
 def _generate_isolated_name(target_name: str) -> str:
@@ -511,6 +546,16 @@ def _promote_staging(approval: _DestinationApproval, staging_name: str) -> None:
             raise GenerationError(
                 f"refusing to replace {_current_target_path()}: its contents changed since generation began; {detail}"
             )
+
+        if isolated_fd is not None:
+            try:
+                _check_directory_mounts(isolated_fd, approval.mount_id)
+            except OSError as exc:
+                restored = _restore()
+                detail = "its prior contents were restored" if restored else (
+                    f"the original data is preserved at {_current_parent_path(parent_fd) / isolated_name}"
+                )
+                raise GenerationError(f"refusing to replace {_current_target_path()}: {exc}; {detail}") from exc
 
         try:
             _renameat2_noreplace(staging_name, target_name, parent_fd)
@@ -638,7 +683,7 @@ def main(argv: list[str] | None = None) -> int:
         params, output_raw = resolve_params(args)
         output_dir = _safe_output_dir(output_raw)
         result = generate(params, output_dir, force=args.force)
-    except (GenerationError, naming.NamingError) as exc:
+    except (GenerationError, naming.NamingError, OSError) as exc:
         print(f"create-project: {exc}", file=sys.stderr)
         return 2
 

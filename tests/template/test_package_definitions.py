@@ -38,7 +38,7 @@ def _definitions_for(**overrides):
     )
     cfg = suite_config_dict(build_model(params))
     pkg = _load_package_module()
-    return {name: kind for name, _modules, kind in pkg.package_definitions(cfg)}
+    return {name: kind for name, _modules, kind in pkg.metadata.package_definitions(cfg)}
 
 
 class PackageDefinitionsTests(unittest.TestCase):

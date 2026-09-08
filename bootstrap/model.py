@@ -46,7 +46,27 @@ def validate_params(p: ProjectParams) -> None:
     naming.validate_label(p.author, "author")
     naming.validate_thunderstore_namespace(p.thunderstore_namespace, "thunderstoreNamespace")
     naming.validate_semver(p.suite_version, "suiteVersion")
-    build_model(p)
+    model = build_model(p)
+    naming.validate_component_length(f"{p.root_namespace}.sln", "solution filename")
+    for project in [m.project_name for m in model.modules] + [f"{p.root_namespace}.Common.Tests"]:
+        naming.validate_component_length(f"{project}.csproj", "project filename")
+        naming.validate_component_length(f"{project}.dll", "assembly filename")
+        naming.validate_component_length(
+            f"{project}.GeneratedMSBuildEditorConfig.editorconfig", "MSBuild generated filename"
+        )
+    package_names = []
+    if model.server_core:
+        package_names.append(f"{p.suite_name}-ServerCore")
+    if model.client:
+        package_names.append(f"{p.suite_name}-Client")
+    if model.shared_diagnostics:
+        package_names.append(model.shared_diagnostics.project_name.replace(".", "-"))
+    if model.has_server_package:
+        package_names.append(f"{p.suite_name}-ServerPack")
+    if model.has_client_package:
+        package_names.append(f"{p.suite_name}-ClientPack")
+    for name in package_names:
+        naming.validate_component_length(f"{name}-{p.suite_version}.zip", "package filename")
 
 
 @dataclass(frozen=True)
@@ -333,7 +353,7 @@ def client_package_family_bullets(model: ProjectModel) -> str:
 
 
 def release_package_family_bullets(model: ProjectModel) -> str:
-    """Mirrors `template/scripts/package.py`'s `package_definitions()`
+    """Mirrors `template/scripts/suite_metadata.py`'s `package_definitions()`
     ordering and gating exactly, so this doc never lists a package family
     that generation cannot actually produce for this model."""
     lines: list[str] = []

@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .model import ProjectParams
-from .render import MALFORMED_MARKER_RE, ROOT_NAMESPACE_PATH_SENTINEL, UNRESOLVED_MARKER_RE
+from .render import ROOT_NAMESPACE_PATH_SENTINEL
 
 # Every `python3`/`bash` subprocess below runs *inside* `output_dir`, which
 # is promoted verbatim into the delivered project. Without this, importing
@@ -83,10 +83,8 @@ def validate_generated(output_dir: Path, params: ProjectParams) -> ValidationRes
 
     # Path validation first: every directory and file beneath `output_dir`,
     # regardless of whether its content decodes as UTF-8 text. A path has
-    # no legitimate escaped/template brace syntax at all -- unlike text
-    # content (see below), so path validation rejects either raw `{{`/`}}`
-    # delimiter outright rather than trying to distinguish a well-formed
-    # marker from a mangled one. A path sentinel or identity leak can also
+    # no legitimate escaped/template brace syntax: reject either raw
+    # doubled-brace delimiter outright. A path sentinel or identity leak can also
     # show up in a relative path itself (a binary `ValheimSuite.Common.dll`,
     # a `ValheimSuite.ServerCore/` directory) independently of anything the
     # content-based checks below can ever see.
@@ -103,17 +101,12 @@ def validate_generated(output_dir: Path, params: ProjectParams) -> ValidationRes
     # intentionally never decoded/scanned here -- its *path* was already
     # fully validated above, which is what actually catches a binary
     # filename leak; treating arbitrary binary bytes as text would be
-    # false confidence, not a stronger check. Unlike paths, text can
-    # legitimately contain a doubled brace (`template/scripts/suite_metadata.py`'s
-    # f-string escape for literal C# braces), so content validation looks
-    # for a *marker-shaped* `{{...}}` -- ordinary (`UNRESOLVED_MARKER_RE`)
-    # or mangled by one stray interior brace (`MALFORMED_MARKER_RE`) --
-    # rather than rejecting every doubled brace.
+    # false confidence, not a stronger check. Generated text has no
+    # legitimate doubled-brace delimiters either.
     for f, text in _text_files(output_dir):
         rel = f.relative_to(output_dir)
-        marker = UNRESOLVED_MARKER_RE.search(text) or MALFORMED_MARKER_RE.search(text)
-        if marker is not None:
-            r.errors.append(f"unresolved template token in {rel}: {marker.group(0)}")
+        if "{{" in text or "}}" in text:
+            r.errors.append(f"unresolved template token in {rel}: doubled-brace delimiter")
         if ROOT_NAMESPACE_PATH_SENTINEL in text:
             r.errors.append(f"unresolved path token in {rel} content")
         if "TODO-before-public-release" in text:

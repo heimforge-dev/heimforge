@@ -44,7 +44,7 @@ class GenerateVibeheimTests(unittest.TestCase):
             import json
 
             cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
-            names = {name for name, _modules, _kind in generated_package.package_definitions(cfg)}
+            names = {name for name, _modules, _kind in generated_package.metadata.package_definitions(cfg)}
         finally:
             sys.path.remove(str(output_dir / "scripts"))
             sys.modules.pop("package", None)

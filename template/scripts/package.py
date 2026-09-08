@@ -50,6 +50,7 @@ def _package_output_path(name: str, version: str) -> Path:
     _validate_name(name, "package name")
     try:
         metadata.validate_semver(version, "package version")
+        metadata.validate_component_length(f"{name}-{version}.zip", "package filename")
     except metadata.MetadataError as exc:
         raise PackageError(str(exc)) from exc
     return metadata.contain(OUT / f"{name}-{version}.zip", OUT, error_cls=PackageError)
@@ -197,29 +198,6 @@ def create_package(name: str, version: str, modules: list[str], cfg: dict, packa
     return _write_package(filename, members)
 
 
-def package_definitions(cfg: dict) -> list[tuple[str, list[str], str]]:
-    packages = cfg["packages"]
-    projects = cfg["projects"]
-    definitions: list[tuple[str, list[str], str]] = []
-
-    server_core_modules = [p for p in packages["serverModules"] if projects[p]["scope"] == "serverOnly"]
-    if server_core_modules:
-        definitions.append((f"{cfg['suiteName']}-ServerCore", server_core_modules, "server-core"))
-
-    if packages["clientOnlyModules"]:
-        definitions.append((f"{cfg['suiteName']}-Client", packages["clientOnlyModules"], "client-only"))
-
-    for module in packages["requiredClientModules"] + packages["optionalClientModules"]:
-        definitions.append((module.replace(".", "-"), [module], "shared-module"))
-
-    if packages["serverModules"]:
-        definitions.append((f"{cfg['suiteName']}-ServerPack", packages["serverModules"], "server-pack"))
-
-    client_pack_modules = packages["requiredClientModules"] + packages["optionalClientModules"] + packages["clientOnlyModules"]
-    if client_pack_modules:
-        definitions.append((f"{cfg['suiteName']}-ClientPack", client_pack_modules, "client-pack"))
-
-    return definitions
 
 
 def _clean_output_directory(parent: metadata._OutputParent) -> None:
@@ -267,7 +245,7 @@ def main() -> int:
                     "run python3 scripts/suite_metadata.py sync"
                 )
         version = cfg["suiteVersion"]
-        definitions = package_definitions(cfg)
+        definitions = metadata.package_definitions(cfg)
         plans = [_plan_package(name, version, modules, cfg, kind) for name, modules, kind in definitions]
         seen_outputs: dict[str, Path] = {}
         for filename, _members in plans:
@@ -317,7 +295,7 @@ def main() -> int:
             return 0
         finally:
             output_parent.close()
-    except (PackageError, metadata.MetadataError) as exc:
+    except (PackageError, metadata.MetadataError, OSError) as exc:
         print(f"package error: {exc}", file=sys.stderr)
         return 2
 

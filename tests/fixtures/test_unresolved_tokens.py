@@ -24,25 +24,7 @@ class UnresolvedTokensTests(unittest.TestCase):
         self.assertTrue(any("NOTES.md" in e and "unresolved template token" in e for e in result.errors), result.errors)
 
     def test_malformed_marker_fails_validation(self):
-        """`{{BAD1}}` (uppercase, digit-bearing) already matches
-        `render.py`'s own `TOKEN_RE` and was already caught before this
-        fix. The remaining shapes below do not -- `TOKEN_RE`-only
-        detection let every one of them survive.
-
-        `{{BAD}1}}` and `{{BAD{1}}}` are both malformed by exactly one
-        stray interior brace after a token-like prefix (`UNRESOLVED_MARKER_RE`'s
-        "no brace inside" class structurally cannot reach either shape).
-        `{{BAD{1}}}` is deliberately rejected the same as `{{BAD}1}}`, not
-        treated as legitimate nested interpolation syntax: scanning every
-        generated file across all seven optional-module combinations
-        turns up exactly one legitimate doubled-brace construct in any
-        generated output (`scripts/suite_metadata.py`'s f-string escape
-        for literal C# braces, covered by
-        `test_legitimate_doubled_brace_source_survives_validation` below),
-        and its `{{` is immediately followed by a literal backslash-n, not
-        a token-like character -- nothing resembling `{{BAD{1}}}` exists in
-        any real generated file.
-        """
+        """Reject raw delimiters, including malformed nested marker shapes."""
         params = make_params()
         cfg = suite_config_dict(build_model(params))
         markers = (
@@ -56,6 +38,10 @@ class UnresolvedTokensTests(unittest.TestCase):
             "{{{BAD}}",
             "{{BAD}1}}",
             "{{BAD{1}}}",
+            "{{BAD}{1}}",
+            "{{{{BAD}{1}}}}",
+            "bare{{",
+            "bare}}",
         )
         for marker in markers:
             with self.subTest(marker=marker):
@@ -70,16 +56,6 @@ class UnresolvedTokensTests(unittest.TestCase):
                     any("NOTES.md" in e and "unresolved template token" in e for e in result.errors), result.errors
                 )
 
-    def test_legitimate_doubled_brace_source_survives_validation(self):
-        """`scripts/suite_metadata.py`'s f-string brace-escape for
-        generating `SuiteConstants.Generated.cs` is the one legitimate
-        doubled-brace construct anywhere in generated output. Content
-        validation must never flag it."""
-        params, output_dir, result = generate_into_temp()
-        self.assertTrue(result.ok, result.errors)
-        metadata = (output_dir / "scripts" / "suite_metadata.py").read_text(encoding="utf-8")
-        self.assertIn("{{", metadata)
-        self.assertIn("}}", metadata)
 
     def test_marker_in_path_fails_validation(self):
         """Every adversarial marker form -- ordinary, malformed by one

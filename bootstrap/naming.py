@@ -170,6 +170,12 @@ def validate_thunderstore_namespace(value: str, field: str) -> str:
     return value
 
 
+def validate_component_length(value: str, field: str) -> str:
+    if len(value.encode("utf-8")) > 255:
+        raise NamingError(f"{field} exceeds the portable 255-byte filesystem component limit")
+    return value
+
+
 def validate_path_component(value: str, field: str) -> str:
     if not isinstance(value, str) or not NAME_COMPONENT_RE.match(value):
         raise NamingError(
@@ -178,4 +184,5 @@ def validate_path_component(value: str, field: str) -> str:
         )
     if value.split(".", 1)[0].upper() in _RESERVED_DEVICE_NAMES:
         raise NamingError(f"{field} must not use a reserved platform device name: {value!r}")
+    validate_component_length(value, field)
     return value

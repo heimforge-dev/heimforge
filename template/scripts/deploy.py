@@ -66,13 +66,7 @@ def artifact_for(project: str, tfm: str, configuration: str) -> Path:
     exact = ROOT / "src" / project / "bin" / configuration / tfm / f"{project}.dll"
     if exact.is_file():
         return exact
-    candidates = sorted((ROOT / "src" / project / "bin" / configuration).glob(f"**/{project}.dll"))
-    candidates = [p for p in candidates if p.is_file()]
-    if len(candidates) == 1:
-        return candidates[0]
-    if not candidates:
-        raise DeployError(f"missing build artifact for {project} ({configuration}/{tfm}); run ./scripts/build.sh {configuration}")
-    raise DeployError(f"ambiguous build artifacts for {project}: {', '.join(str(p.relative_to(ROOT)) for p in candidates)}")
+    raise DeployError(f"missing build artifact for {project} ({configuration}/{tfm}); run ./scripts/build.sh {configuration}")
 
 
 def modules_for(cfg: dict, target: str) -> list[str]:
@@ -259,17 +253,17 @@ def write_manifest(dir_fd: int, name: str, files: set[str]) -> None:
         raise DeployError(f"cannot durably commit deployment manifest {name}: {exc}") from exc
 
 
-def remove_stale_entry(dir_fd: int, name: str) -> None:
+def remove_stale_entry(dir_fd: int, name: str) -> bool:
     """Remove exactly the directory entry `name` -- previously recorded as
     this suite's own deployed output but no longer desired -- from the
     directory referenced by `dir_fd`. Never follows the entry: a symlink is
     unlinked as a directory entry without touching its target, a directory
     or other unexpected non-regular object fails safely instead of being
-    recursively destroyed, and an already-absent entry is tolerated."""
+    recursively destroyed. Return whether an entry was actually unlinked."""
     try:
         entry = os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
     except FileNotFoundError:
-        return
+        return False
     except OSError as exc:
         raise DeployError(f"cannot inspect stale deployment entry {name}: {exc}") from exc
     if not stat.S_ISREG(entry.st_mode) and not stat.S_ISLNK(entry.st_mode):
@@ -277,9 +271,10 @@ def remove_stale_entry(dir_fd: int, name: str) -> None:
     try:
         os.unlink(name, dir_fd=dir_fd)
     except FileNotFoundError:
-        return
+        return False
     except OSError as exc:
         raise DeployError(f"cannot remove stale deployment entry {name}: {exc}") from exc
+    return True
 
 
 def main() -> int:
@@ -355,8 +350,25 @@ def main() -> int:
                     deploy_dll(source, dir_fd, source.name)
                 stale = sorted(previously_owned - desired_names)
                 write_manifest(dir_fd, manifest_filename, desired_names)
-                for name in stale:
-                    remove_stale_entry(dir_fd, name)
+                removed = False
+                removal_error = None
+                try:
+                    for name in stale:
+                        if remove_stale_entry(dir_fd, name):
+                            removed = True
+                except DeployError as exc:
+                    removal_error = exc
+                    raise
+                finally:
+                    if removed:
+                        try:
+                            os.fsync(dir_fd)
+                        except OSError as exc:
+                            detail = f"cannot durably commit stale deployment removals: {exc}"
+                            if removal_error is not None:
+                                # Keep the removal failure primary without hiding failed durability.
+                                raise DeployError(f"{removal_error}; additionally, {detail}") from removal_error
+                            raise DeployError(detail) from exc
             finally:
                 fcntl.flock(dir_fd, fcntl.LOCK_UN)
             if stale:

@@ -218,7 +218,7 @@ class EffectivePackageDeploymentTests(unittest.TestCase):
         self.cfg = _minimal_valid_cfg(self.root)
 
     def _definitions(self) -> dict[str, list[str]]:
-        return {name: modules for name, modules, _kind in self.pkg.package_definitions(self.cfg)}
+        return {name: modules for name, modules, _kind in self.metadata.package_definitions(self.cfg)}
 
     def test_shared_required_reaches_server_and_required_client_sides(self) -> None:
         project = "Sampleheim.Shared.Required"

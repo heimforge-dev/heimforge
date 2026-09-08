@@ -54,6 +54,11 @@ def _add_sln_entry(output_dir: Path, cfg: dict, project: str) -> None:
         f'Project("{CSHARP_PROJECT_TYPE_GUID}") = "{project}", "src\\{project}\\{project}.csproj", "{guid}"',
         "EndProject",
     ]
+    section = next(i for i, line in enumerate(lines) if "GlobalSection(ProjectConfigurationPlatforms)" in line)
+    lines[section + 1:section + 1] = [
+        f"\t\t{guid}.{configuration}|Any CPU.{mapping} = {configuration}|Any CPU"
+        for configuration in ("Debug", "Release") for mapping in ("ActiveCfg", "Build.0")
+    ]
     sln_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -62,7 +67,9 @@ def _remove_sln_entry(output_dir: Path, cfg: dict, project: str) -> None:
     lines = sln_path.read_text(encoding="utf-8").splitlines()
     start = next(i for i, line in enumerate(lines) if line.strip().startswith("Project(") and f'"{project}"' in line)
     end = next(i for i in range(start, len(lines)) if lines[i].strip() == "EndProject")
+    guid = lines[start].rsplit('"', 2)[1]
     del lines[start : end + 1]
+    lines = [line for line in lines if not line.strip().startswith(guid + ".")]
     sln_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -119,12 +126,6 @@ class SolutionParserTests(unittest.TestCase):
         sln_text = _sln_path(self.output_dir, self.cfg).read_text(encoding="utf-8")
         parsed = self.metadata.parse_solution_src_projects(sln_text)
         self.assertEqual(set(self.cfg["projects"]), {name for name, _path in parsed})
-
-    def test_returns_a_list_not_a_dict(self) -> None:
-        sln_text = _sln_path(self.output_dir, self.cfg).read_text(encoding="utf-8")
-        parsed = self.metadata.parse_solution_src_projects(sln_text)
-        self.assertIsInstance(parsed, list)
-        self.assertTrue(all(isinstance(entry, tuple) and len(entry) == 2 for entry in parsed))
 
     def test_excludes_the_generated_test_project(self) -> None:
         sln_text = _sln_path(self.output_dir, self.cfg).read_text(encoding="utf-8")

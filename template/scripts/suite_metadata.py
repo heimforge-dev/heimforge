@@ -52,10 +52,8 @@ SOLUTION_PROJECT_LINE = re.compile(
 CSHARP_PROJECT_TYPE_GUID = "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}"
 
 # The four package/deployment membership groups from suite.config.json's
-# "packages" object. deploy.py's modules_for() and package.py's
-# package_definitions() both read these same four arrays directly, so this
-# tuple and SCOPE_PACKAGE_GROUPS below are the single source of truth they
-# must stay aligned with.
+# "packages" object. Deployment and package definitions read these same
+# arrays; SCOPE_PACKAGE_GROUPS defines their exact membership.
 PACKAGE_GROUPS = ("serverModules", "requiredClientModules", "optionalClientModules", "clientOnlyModules")
 
 # The exact set of package/deployment groups a project's declared
@@ -313,6 +311,12 @@ def validate_semver(value: str, field: str) -> str:
     return value
 
 
+def validate_component_length(value: str, field: str) -> str:
+    if len(value.encode("utf-8")) > 255:
+        raise MetadataError(f"{field} exceeds the portable 255-byte filesystem component limit")
+    return value
+
+
 def validate_path_component(value: str, field: str) -> str:
     """A value that becomes exactly one filesystem or archive path segment:
     reject anything that isn't a plain, portable name."""
@@ -323,6 +327,7 @@ def validate_path_component(value: str, field: str) -> str:
         )
     if value.split(".", 1)[0].upper() in _RESERVED_DEVICE_NAMES:
         raise MetadataError(f"{field} must not use a reserved platform device name: {value!r}")
+    validate_component_length(value, field)
     return value
 
 
@@ -433,6 +438,15 @@ def validate(cfg: dict, release: bool = False) -> None:
         if not isinstance(tfm, str):
             raise MetadataError(f"projects.{project}.targetFramework must be a non-empty string")
         validate_path_component(tfm, f"projects.{project}.targetFramework")
+        expected_tfm = "netstandard2.0" if scope == "common" else "net48"
+        if tfm != expected_tfm:
+            raise MetadataError(f"projects.{project}.targetFramework must be {expected_tfm} for scope {scope}")
+        validate_component_length(f"{project}.csproj", "project filename")
+        validate_component_length(f"{project}.dll", "assembly filename")
+        validate_component_length(f"{project}.GeneratedMSBuildEditorConfig.editorconfig", "MSBuild generated filename")
+    _reject_case_collisions(projects, "project names")
+    _reject_case_collisions((f"src/{p}/{p}.csproj" for p in projects), "canonical source paths")
+    _reject_case_collisions((f"{p}.dll" for p in projects), "assembly filenames")
 
     packages = cfg.get("packages")
     if not isinstance(packages, dict):
@@ -440,6 +454,8 @@ def validate(cfg: dict, release: bool = False) -> None:
     common = packages.get("commonModule")
     if not isinstance(common, str) or common not in projects or projects[common]["scope"] != "common":
         raise MetadataError("packages.commonModule must identify the project with scope=common")
+    if [project for project, item in projects.items() if item["scope"] == "common"] != [common]:
+        raise MetadataError("exactly one project must have scope=common and be packages.commonModule")
 
     group_values: dict[str, list[str]] = {}
     for group in PACKAGE_GROUPS:
@@ -487,6 +503,16 @@ def validate(cfg: dict, release: bool = False) -> None:
             "common-scope projects produces no runtime BepInEx plugin"
         )
 
+    validate_component_length(f"{cfg['rootNamespace']}.sln", "solution filename")
+    validate_component_length(
+        f"{cfg['rootNamespace']}.Common.Tests.GeneratedMSBuildEditorConfig.editorconfig", "test MSBuild generated filename"
+    )
+    validate_component_length(f".{suite_name}.deploy-manifest.json", "deployment manifest")
+    definitions = package_definitions(cfg)
+    _reject_case_collisions((name for name, _modules, _kind in definitions), "package output names")
+    for name, _modules, _kind in definitions:
+        validate_component_length(f"{name}-{suite_version}.zip", "package filename")
+
     for project, item in projects.items():
         csproj = ROOT / "src" / project / f"{project}.csproj"
         if not csproj.exists():
@@ -514,6 +540,40 @@ def validate(cfg: dict, release: bool = False) -> None:
             bad.append("pluginGuidRoot")
         if bad:
             raise MetadataError("Public-release metadata is incomplete: " + ", ".join(bad))
+
+
+def package_definitions(cfg: dict) -> list[tuple[str, list[str], str]]:
+    packages = cfg["packages"]
+    projects = cfg["projects"]
+    definitions: list[tuple[str, list[str], str]] = []
+
+    server_core_modules = [p for p in packages["serverModules"] if projects[p]["scope"] == "serverOnly"]
+    if server_core_modules:
+        definitions.append((f"{cfg['suiteName']}-ServerCore", server_core_modules, "server-core"))
+
+    if packages["clientOnlyModules"]:
+        definitions.append((f"{cfg['suiteName']}-Client", packages["clientOnlyModules"], "client-only"))
+
+    for module in packages["requiredClientModules"] + packages["optionalClientModules"]:
+        definitions.append((module.replace(".", "-"), [module], "shared-module"))
+
+    if packages["serverModules"]:
+        definitions.append((f"{cfg['suiteName']}-ServerPack", packages["serverModules"], "server-pack"))
+
+    client_pack_modules = packages["requiredClientModules"] + packages["optionalClientModules"] + packages["clientOnlyModules"]
+    if client_pack_modules:
+        definitions.append((f"{cfg['suiteName']}-ClientPack", client_pack_modules, "client-pack"))
+
+    return definitions
+
+
+def _reject_case_collisions(values, field: str) -> None:
+    seen: set[str] = set()
+    for value in values:
+        key = value.casefold()
+        if key in seen:
+            raise MetadataError(f"case-insensitive collision in {field}: {value!r}")
+        seen.add(key)
 
 
 def parse_solution_src_projects(sln_text: str) -> list[tuple[str, str]]:
@@ -556,6 +616,7 @@ def parse_solution_src_projects(sln_text: str) -> list[tuple[str, str]]:
     """
     entries: list[tuple[str, str]] = []
     open_line: str | None = None
+    guids: set[str] = set()
     for line in sln_text.splitlines():
         stripped = line.strip()
         if stripped.startswith("Project("):
@@ -576,6 +637,10 @@ def parse_solution_src_projects(sln_text: str) -> list[tuple[str, str]]:
                     f"malformed solution: Project(...) entry does not match the supported declaration "
                     f"syntax: {header!r}"
                 )
+            guid = match.group("project_guid").upper()
+            if guid in guids:
+                raise MetadataError(f"solution contains a duplicate project GUID: {guid}")
+            guids.add(guid)
             if match.group("type_guid").upper() != CSHARP_PROJECT_TYPE_GUID:
                 continue
             name = match.group("name")
@@ -640,6 +705,60 @@ def validate_solution_membership(cfg: dict) -> None:
         raise MetadataError(
             "projects must exactly match the canonical solution's src/ project membership: " + "; ".join(problems)
         )
+    validate_solution_configurations(sln_text)
+
+
+def validate_solution_configurations(sln_text: str) -> None:
+    configurations = ("Debug|Any CPU", "Release|Any CPU")
+    projects = [
+        match.group("project_guid").upper()
+        for line in sln_text.splitlines()
+        if (match := SOLUTION_PROJECT_LINE.fullmatch(line.strip()))
+        and match.group("type_guid").upper() == CSHARP_PROJECT_TYPE_GUID
+    ]
+    expected = {
+        "SolutionConfigurationPlatforms": {cfg: cfg for cfg in configurations},
+        "ProjectConfigurationPlatforms": {
+            f"{guid}.{cfg}.{mapping}": cfg
+            for guid in projects for cfg in configurations for mapping in ("ActiveCfg", "Build.0")
+        },
+    }
+    sections: dict[str, dict[str, str]] = {}
+    section = None
+    for line in sln_text.splitlines():
+        line = line.strip()
+        if line.startswith("GlobalSection("):
+            if section is not None:
+                raise MetadataError("malformed solution configuration section")
+            match = re.fullmatch(r"GlobalSection\(([^)]+)\)\s*=\s*(preSolution|postSolution)", line)
+            if match is None:
+                raise MetadataError("malformed solution GlobalSection")
+            section = match[1]
+            if section in sections:
+                raise MetadataError(f"duplicate solution section: {section}")
+            sections[section] = {}
+            if section in expected and match[2] != (
+                "preSolution" if section == "SolutionConfigurationPlatforms" else "postSolution"
+            ):
+                raise MetadataError(f"invalid solution section placement: {section}")
+        elif line == "EndGlobalSection":
+            if section is None:
+                raise MetadataError("malformed solution: unmatched EndGlobalSection")
+            section = None
+        elif section in expected and line:
+            key, separator, value = line.partition("=")
+            key, value = key.strip(), value.strip()
+            if section == "ProjectConfigurationPlatforms":
+                guid, dot, suffix = key.partition(".")
+                key = guid.upper() + dot + suffix
+            if not separator or not key or not value or key in sections[section]:
+                raise MetadataError(f"malformed or duplicate solution configuration entry: {line}")
+            sections[section][key] = value
+    if section is not None:
+        raise MetadataError("malformed solution: unclosed GlobalSection")
+    for name, mappings in expected.items():
+        if sections.get(name) != mappings:
+            raise MetadataError(f"{name} must define exactly Debug/Release Any CPU ActiveCfg and Build.0 mappings")
 
 
 def xml_escape(value: str) -> str:
@@ -656,7 +775,14 @@ def expected_files(cfg: dict) -> dict[Path, str]:
     generated_props = contain(GENERATED_PROPS, ROOT / "build")
     common_project = cfg["packages"]["commonModule"]
     generated_cs = contain(ROOT / "src" / common_project / "SuiteConstants.Generated.cs", ROOT / "src")
-    cs = f'''// <auto-generated />\nnamespace {cfg['rootNamespace']}.Common;\n\npublic static class SuiteConstants\n{{\n    public const string Name = "{cs_escape(cfg['suiteName'])}";\n    public const string Version = "{cs_escape(cfg['suiteVersion'])}";\n    public const string GuidRoot = "{cs_escape(cfg['pluginGuidRoot'])}";\n}}\n'''
+    cs = (
+        f"// <auto-generated />\nnamespace {cfg['rootNamespace']}.Common;\n\n"
+        "public static class SuiteConstants\n{\n"
+        f'    public const string Name = "{cs_escape(cfg["suiteName"])}";\n'
+        f'    public const string Version = "{cs_escape(cfg["suiteVersion"])}";\n'
+        f'    public const string GuidRoot = "{cs_escape(cfg["pluginGuidRoot"])}";\n'
+        "}\n"
+    )
 
     packages = cfg["packages"]
     lock = {
@@ -818,7 +944,8 @@ def preflight_output_target(parent: _OutputParent, final_name: str, *, error_cls
 def create_temp_file(parent: _OutputParent, final_name: str, *, error_cls: type[Exception]) -> _TemporaryOutput:
     parent.verify(error_cls)
     for _ in range(16):
-        temp_name = f".{final_name}.{uuid.uuid4().hex}.tmp"
+        # The random suffix owns uniqueness; a bounded label allows 255-byte final names.
+        temp_name = f".{final_name[:32]}.{uuid.uuid4().hex}.tmp"
         try:
             temp_fd = os.open(
                 temp_name,

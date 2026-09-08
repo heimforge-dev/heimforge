@@ -76,6 +76,11 @@ def _add_sln_entry(output_dir: Path, cfg: dict, project: str) -> None:
         f'Project("{CSHARP_PROJECT_TYPE_GUID}") = "{project}", "src\\{project}\\{project}.csproj", "{guid}"',
         "EndProject",
     ]
+    section = next(i for i, line in enumerate(lines) if "GlobalSection(ProjectConfigurationPlatforms)" in line)
+    lines[section + 1:section + 1] = [
+        f"\t\t{guid}.{configuration}|Any CPU.{mapping} = {configuration}|Any CPU"
+        for configuration in ("Debug", "Release") for mapping in ("ActiveCfg", "Build.0")
+    ]
     sln_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -209,7 +214,9 @@ class CustomProjectSideAvailabilityTests(unittest.TestCase):
         lines = sln_path.read_text(encoding="utf-8").splitlines()
         start = next(i for i, line in enumerate(lines) if line.strip().startswith("Project(") and f'"{server_core}"' in line)
         end = next(i for i in range(start, len(lines)) if lines[i].strip() == "EndProject")
+        guid = lines[start].rsplit('"', 2)[1]
         del lines[start : end + 1]
+        lines = [line for line in lines if not line.strip().startswith(guid + ".")]
         sln_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
         del cfg["projects"][server_core]

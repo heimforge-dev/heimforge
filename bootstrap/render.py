@@ -53,41 +53,6 @@ TEMPLATE_DIR = ROOT / "template"
 # whether a `{{...}}` in template *source* is a legal, recognized token.
 TOKEN_RE = re.compile(r"\{\{([A-Z_][A-Z0-9_]*)\}\}")
 
-# Deliberately broader than `TOKEN_RE`: `validate_generated.py` imports
-# this to catch *any* `{{...}}`-shaped marker surviving in final generated
-# output -- lowercase, malformed, digit-led, hyphenated, spaced, or empty
-# names included -- not just ones that happen to be legal token syntax.
-# Generated output has no legitimate reason to contain literal `{{`/`}}`
-# delimiters at all (no template file uses them for anything but token
-# substitution -- `template/scripts/suite_metadata.py`'s f-string escapes
-# for literal C# braces are the one place double braces appear outside a
-# token, and real interpolated `{expr}` characters always sit between
-# that file's `{{`/`}}` pair, so the "no brace inside" class below never
-# matches across them). Keeping this separate from `TOKEN_RE` is
-# intentional, not an oversight: `TOKEN_RE` must stay narrow so the
-# renderer/`validate_template()` still reject an unknown token in
-# template *source*; this one must stay broad so no unresolved-looking
-# marker of any shape can slip through final-output validation.
-UNRESOLVED_MARKER_RE = re.compile(r"\{\{[^{}]*\}\}")
-
-# `UNRESOLVED_MARKER_RE`'s "no brace inside" class is deliberately blind to
-# a marker mangled by exactly one stray interior brace, e.g. `{{BAD}1}}` or
-# `{{BAD{1}}}` -- adversarial garbage that still reads as an attempted
-# template token. This catches that shape: `{{` immediately followed by a
-# *token-like* character run (letters/digits/space/hyphen/underscore --
-# the same charset every real marker in `UNRESOLVED_MARKER_RE`'s matrix
-# uses), then exactly one single stray `{` or `}`, then more token-like
-# characters, then a closing `}}`. Checked across every generated file in
-# all seven optional-module combinations, `template/scripts/suite_metadata.py`'s
-# f-string brace-escape (the one legitimate doubled-brace construct in
-# generated output) is the sole doubled-brace occurrence anywhere, and its
-# `{{` is immediately followed by a literal backslash-n, not a token-like
-# character -- so it can never match here, and there is no evidence any
-# legitimate generated source needs this shape. `{{BAD{1}}}` is therefore
-# rejected the same as `{{BAD}1}}`, not treated as legitimate nested
-# interpolation syntax.
-MALFORMED_MARKER_RE = re.compile(r"\{\{[A-Za-z0-9_ -]+[{}][A-Za-z0-9_ -]*\}\}")
-
 # The one path-sentinel segment `_render_plan()` substitutes with the real
 # root namespace (see `template_manifest.py`'s module docstring). A single
 # definition so `validate_generated.py`'s unresolved-path-sentinel check
@@ -192,7 +157,7 @@ def _open_source_file(template_dir: Path, rel: str) -> int:
                     os.close(fd)
                 fd, owns_fd = next_fd, True
             try:
-                file_fd = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW, dir_fd=fd)
+                file_fd = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
             except OSError as exc:
                 if exc.errno == errno.ELOOP:
                     raise TemplateSourceError(f"{rel}: {parts[-1]!r} is a symlink") from exc
@@ -379,14 +344,15 @@ def validate_template(template_dir: Path = TEMPLATE_DIR) -> list[str]:
             expected_dirs.add("/".join(parts[:i]))
 
     for f in sorted(template_dir.rglob("*")):
-        if f.is_dir():
-            rel = f.relative_to(template_dir).as_posix()
+        rel = f.relative_to(template_dir).as_posix()
+        mode = f.lstat().st_mode
+        if stat.S_ISDIR(mode):
             if rel not in expected_dirs:
                 errors.append(f"unexpected directory not required by the template manifest: {rel}")
             continue
-        if not f.is_file():
+        if not stat.S_ISREG(mode):
+            errors.append(f"template entry is not a regular file or directory: {rel}")
             continue
-        rel = f.relative_to(template_dir).as_posix()
         if rel in approved:
             continue
         reason = _forbidden_reason(rel)

@@ -53,6 +53,7 @@ def _add_sln_entries(output_dir: Path, root_namespace: str, projects: list[str])
     lines = sln_path.read_text(encoding="utf-8").splitlines()
     insert_at = next(i for i, line in enumerate(lines) if line.strip() == "Global")
     new_lines = []
+    mappings = []
     for project in projects:
         guid = "{" + str(uuid.uuid4()).upper() + "}"
         new_lines += [
@@ -60,7 +61,13 @@ def _add_sln_entries(output_dir: Path, root_namespace: str, projects: list[str])
             f'"src\\{project}\\{project}.csproj", "{guid}"',
             "EndProject",
         ]
+        mappings += [
+            f"\t\t{guid}.{configuration}|Any CPU.{mapping} = {configuration}|Any CPU"
+            for configuration in ("Debug", "Release") for mapping in ("ActiveCfg", "Build.0")
+        ]
     lines[insert_at:insert_at] = new_lines
+    section = next(i for i, line in enumerate(lines) if "GlobalSection(ProjectConfigurationPlatforms)" in line)
+    lines[section + 1:section + 1] = mappings
     sln_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -660,7 +667,7 @@ class PackageWriteBoundaryTests(unittest.TestCase):
         output_dir, cfg = self._generated_project_with_artifacts()
         packages = output_dir / "artifacts" / "packages"
         packages.mkdir(parents=True)
-        name, _modules, _kind = _import_scripts_from(output_dir / "scripts")[1].package_definitions(cfg)[0]
+        name, _modules, _kind = _import_scripts_from(output_dir / "scripts")[0].package_definitions(cfg)[0]
         target = packages / f"{name}-{cfg['suiteVersion']}.zip"
         external = Path(tempfile.mkdtemp(prefix="valheimsuite-external-package-")) / target.name
         external.write_bytes(b"external sentinel")
@@ -691,7 +698,7 @@ class PackageWriteBoundaryTests(unittest.TestCase):
         _add_sln_entries(output_dir, cfg["rootNamespace"], ["Foo.Bar", "foo-bar"])
         _save_cfg(output_dir, cfg)
         sync = _run(["scripts/suite_metadata.py", "sync"], output_dir)
-        self.assertEqual(0, sync.returncode, sync.stdout)
+        self.assertNotEqual(0, sync.returncode, sync.stdout)
 
         packages = output_dir / "artifacts" / "packages"
         packages.mkdir(parents=True)
@@ -864,7 +871,7 @@ class PackageFinalTargetPreflightTests(unittest.TestCase):
     def test_planned_zip_directory_rejects_before_cleaning(self):
         output_dir, cfg, packages = self._setup()
         _metadata, pkg = _import_scripts_from(output_dir / "scripts")
-        name, _modules, _kind = pkg.package_definitions(cfg)[0]
+        name, _modules, _kind = _metadata.package_definitions(cfg)[0]
         (packages / f"{name}-{cfg['suiteVersion']}.zip").mkdir()
         old_zip = packages / "old.zip"
         checksum = packages / "SHA256SUMS"
@@ -957,7 +964,7 @@ class TemporaryEntrySubstitutionTests(unittest.TestCase):
         self._assert_external_unchanged(external, external_mode)
         self.assertFalse(target.is_symlink())
         self.assertEqual(b"existing archive", target.read_bytes())
-        self.assertFalse(any(target.parent.glob(f".{target.name}.*.tmp")))
+        self.assertFalse(any(target.parent.glob(".*.tmp")))
 
     def test_checksum_promotion_rejects_substituted_temp_entry(self):
         root = copy_template_to_temp()
