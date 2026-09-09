@@ -110,6 +110,10 @@ OPTIONAL_GROUP_PRESENT = {
 }
 
 
+def _is_executable_template_path(rel: str) -> bool:
+    return rel.endswith(".sh") or rel == "scripts/preflight.py"
+
+
 def _manifest_files_for(model: ProjectModel) -> frozenset[str]:
     """The manifest-approved paths to render for this specific model:
     everything required, plus each optional group's files iff its
@@ -267,7 +271,7 @@ def render_tree(model: ProjectModel, output_dir: Path, template_dir: Path = TEMP
             continue
         escape = _ts_string_escape if dest_str.endswith(".ts") else None
         dest.write_text(_substitute(text, tokens, escape=escape), encoding="utf-8", newline="\n")
-        if rel.endswith(".sh"):
+        if _is_executable_template_path(rel):
             dest.chmod(0o755)
 
 
@@ -325,8 +329,8 @@ def validate_template(template_dir: Path = TEMPLATE_DIR) -> list[str]:
         except OSError:
             os.close(fd)
             raise
-        if rel.endswith(".sh") and not (st.st_mode & stat.S_IXUSR):
-            errors.append(f"template script is not executable: {rel}")
+        if _is_executable_template_path(rel) and not (st.st_mode & stat.S_IXUSR):
+            errors.append(f"template {rel!r} is not executable")
         with os.fdopen(fd, "rb") as f:
             data = f.read()
         try:

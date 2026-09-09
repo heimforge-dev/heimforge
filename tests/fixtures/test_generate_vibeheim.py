@@ -1,3 +1,4 @@
+import stat
 import sys
 import unittest
 
@@ -14,6 +15,12 @@ class GenerateVibeheimTests(unittest.TestCase):
             thunderstore_namespace="TaiBenvenuti",
         )
         self.assertTrue(result.ok, result.errors)
+
+        preflight_mode = (output_dir / "scripts" / "preflight.py").stat().st_mode
+        self.assertTrue(
+            preflight_mode & stat.S_IXUSR,
+            "generated scripts/preflight.py must be executable",
+        )
 
         sln = (output_dir / "Vibeheim.sln").read_text(encoding="utf-8")
         for project in (
