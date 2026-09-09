@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -11,6 +12,9 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+ENVIRONMENT_PROPERTIES = frozenset({"VALHEIM_INSTALL", "VALHEIM_MANAGED", "BEPINEX_PATH", "MOD_DEPLOYPATH"})
+PROPERTY_REFERENCE = re.compile(r"\$\(([^()]*)\)")
 
 class PreflightError(RuntimeError):
     pass
@@ -42,9 +46,32 @@ def parse_environment_props(path: Path) -> dict[str, str]:
     values: dict[str, str] = {}
     for element in tree.iter():
         tag = element.tag.split("}")[-1]
-        if tag in {"VALHEIM_INSTALL", "VALHEIM_MANAGED", "BEPINEX_PATH", "MOD_DEPLOYPATH"} and element.text:
+        if tag in ENVIRONMENT_PROPERTIES and element.text:
             values[tag] = element.text.strip()
-    return values
+
+    def expand(name: str, chain: tuple[str, ...]) -> str:
+        if name in chain:
+            raise PreflightError(
+                f"cyclic Environment.props property reference: {' -> '.join((*chain, name))}"
+            )
+        value = values.get(name)
+        if value is None:
+            raise PreflightError(f"unresolved Environment.props property reference: $({name})")
+
+        def replace(match: re.Match[str]) -> str:
+            reference = match.group(1)
+            if not reference:
+                raise PreflightError(f"invalid Environment.props property reference in {name}")
+            if reference not in ENVIRONMENT_PROPERTIES:
+                raise PreflightError(f"unknown Environment.props property reference: $({reference})")
+            return expand(reference, (*chain, name))
+
+        expanded = PROPERTY_REFERENCE.sub(replace, value)
+        if "$(" in expanded:
+            raise PreflightError(f"invalid Environment.props property reference in {name}: {value}")
+        return expanded
+
+    return {name: expand(name, ()) for name in values}
 
 
 def find_jotunn(plugin_root: Path) -> Path | None:
@@ -134,10 +161,12 @@ def main() -> int:
 
         if not args.portable:
             env = parse_environment_props(ROOT / "Environment.props")
-            raw_install = env.get("VALHEIM_INSTALL")
-            if not raw_install or "$" in raw_install:
-                raise PreflightError("Environment.props VALHEIM_INSTALL must be set to the actual WSL-visible Valheim path")
-            env_install = Path(raw_install).expanduser()
+            for key in ("VALHEIM_INSTALL", "VALHEIM_MANAGED", "BEPINEX_PATH"):
+                if not env.get(key):
+                    raise PreflightError(f"Environment.props {key} must be set to an actual WSL-visible path")
+            env_install = Path(env["VALHEIM_INSTALL"]).expanduser()
+            managed = Path(env["VALHEIM_MANAGED"]).expanduser()
+            bepinex_root = Path(env["BEPINEX_PATH"]).expanduser()
             checks["environmentValheimInstall"] = str(env_install)
 
             dev, dev_warnings = validate_dev_config(ROOT / ".valheim" / "dev.json")
@@ -147,16 +176,9 @@ def main() -> int:
                 raise PreflightError(
                     f"Valheim path mismatch: Environment.props={env_install} but .valheim/dev.json={dev_install}"
                 )
-            managed = dev_install / "valheim_Data" / "Managed"
             assembly = managed / "Assembly-CSharp.dll"
-            bepinex = dev_install / "BepInEx" / "core" / "BepInEx.dll"
-            jotunn = find_jotunn(dev_install / "BepInEx" / "plugins")
-            if not assembly.is_file():
-                raise PreflightError(f"Assembly-CSharp.dll not found: {assembly}")
-            if not bepinex.is_file():
-                raise PreflightError(f"BepInEx.dll not found: {bepinex}; install the pinned BepInExPack in the development client")
-            if jotunn is None:
-                raise PreflightError(f"Jotunn.dll not found recursively under {dev_install / 'BepInEx' / 'plugins'}")
+            bepinex = bepinex_root / "core" / "BepInEx.dll"
+            jotunn = find_jotunn(bepinex_root / "plugins")
             checks["assemblyCSharp"] = str(assembly)
             checks["bepInEx"] = str(bepinex)
             checks["jotunn"] = str(jotunn)
