@@ -22,3 +22,4 @@ This repository is a generator (bootstrapper), not a Valheim mod project. It pro
 8. Do not create generic planner/reviewer/scout/worker agents for this project; use native harness capabilities.
 9. Keep changes minimal and scoped. Do not add a templating dependency (Jinja2 etc.) — the dependency-free token substitution in `render.py` is deliberate.
 10. Do not implement Vibeheim (or any generated project's) gameplay features from this repository. `template/` must stay a generic framework; feature-specific work belongs inside the generated project.
+11. Prefer targeted and adjacent tests during iteration. Run the full suite once before completing broad or cross-cutting changes when warranted. Do not repeatedly run the full suite for narrow changes.
