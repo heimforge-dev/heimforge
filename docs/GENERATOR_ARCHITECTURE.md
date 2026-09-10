@@ -58,6 +58,14 @@ workflows fail closed without successful MSBuild evaluation. Generated portable
 preflight still requires dotnet; "portable" skips machine-specific game checks,
 not semantic project validation.
 
+## Generated deployment architecture
+
+The generated project parses development-local schema v1/v2 configuration in `scripts/dev_config.py`. `scripts/deploy.py` owns metadata validation, the transport-independent `DeploymentPlan`, the existing hardened retained-directory-FD deployment, and explicit restart orchestration. `scripts/remote_deploy.py` owns SSH/SCP invocation plus isolated POSIX-shell and Windows-PowerShell staging/promotion implementations. `scripts/server_runtime.py` owns the fixed status/log operations and dispatches them beside the configured local or remote Docker lifecycle without exposing transport logic to the extension.
+
+Both local and SSH transports receive the same plan. SSH transport uploads into a unique sibling stage, verifies the exact filenames and SHA-256 hashes, compares the live ownership manifest against the pre-upload observation, and promotes only owned entries with a rollback backup. Lifecycle remains independent: `--restart` invokes `docker restart` only after deployment succeeds and reports lifecycle failures separately.
+
+Remote safety is intentionally fail-safe rather than described as equivalent to the local retained-directory-FD guarantees. Separate SSH/SCP processes cannot retain one directory inode or `flock` across the full operation, so remote deployment rejects non-canonical/symlinked parents or Windows reparse points and documents that concurrent deployment to one suite directory is unsupported. Staged hash verification is point-in-time, rollback is best-effort if the remote process or host fails, and remote promotion does not claim local-equivalent `fsync` durability.
+
 ## Generation pipeline
 
 1. `validate_params()` — reject malformed suite name, namespace, GUID root, author, Thunderstore namespace, or version; `validate_params()` also calls `build_model()`, which rejects a selection with every optional module (`ServerCore`, `Client`, `Shared.Diagnostics`) disabled -- Common alone builds no runtime BepInEx plugin, so this fails before the approved destination is ever touched (see `docs/TEMPLATE_MAINTENANCE.md`'s "The empty-runtime invariant").

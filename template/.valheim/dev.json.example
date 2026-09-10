@@ -1,12 +1,17 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "developmentOnly": true,
   "valheimInstall": "/mnt/c/Program Files (x86)/Steam/steamapps/common/Valheim",
   "clientPluginDir": "/mnt/c/Program Files (x86)/Steam/steamapps/common/Valheim/BepInEx/plugins/{{ROOT_NAMESPACE}}",
-  "serverPluginDir": "/home/YOUR_USER/valheim-dev/plugins/{{ROOT_NAMESPACE}}",
-  "dockerComposeFile": "/home/YOUR_USER/valheim-dev/compose.yaml",
-  "dockerService": "valheim-server",
-  "serverLogFile": null,
+  "server": {
+    "deployment": {
+      "type": "local",
+      "pluginDir": "/home/YOUR_USER/valheim-dev/plugins/{{ROOT_NAMESPACE}}"
+    },
+    "lifecycle": {
+      "type": "none"
+    }
+  },
   "solution": "{{ROOT_NAMESPACE}}.sln",
   "configuration": "Debug"
 }

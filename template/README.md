@@ -9,7 +9,7 @@ This package is a development/bootstrap repository, not a claim that Valheim run
 Use **WSL/Linux as the primary development environment**.
 
 ```text
-WSL repository + OMP/Pi + dotnet + Docker tooling
+WSL repository + OMP/Pi + dotnet + optional Docker tooling
         |
         +-- build/test/package in WSL
         +-- inspect Windows Valheim files through /mnt/c/...
@@ -96,11 +96,13 @@ Then run:
 
 ## Deployment
 
-Both Bash deployment and OMP deployment use the same metadata-driven `scripts/deploy.py` implementation.
+Both Bash deployment and OMP deployment use the same metadata-driven `scripts/deploy.py` implementation. Server artifact planning is independent of deployment transport (`local` or `ssh`) and lifecycle (`none` or `docker`), so changing where the server runs never changes module selection.
 
 ```bash
 {{DEPLOY_COMMANDS_LIST}}
 ```
+
+Server deployment does not restart by default. Use `./scripts/deploy-server.sh Debug --restart` to invoke the configured lifecycle after a successful deployment. See `docs/development.md` for schema-v2 local/SSH examples, SSH aliases and executable overrides, remote platform selection, staging guarantees, and schema-v1 migration.
 
 {{DEPLOY_SIDE_NOTES_LIST}}
 

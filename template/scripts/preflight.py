@@ -11,6 +11,8 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from dev_config import ConfigError, parse_development_config
+
 ROOT = Path(__file__).resolve().parents[1]
 
 ENVIRONMENT_PROPERTIES = frozenset({"VALHEIM_INSTALL", "VALHEIM_MANAGED", "BEPINEX_PATH", "MOD_DEPLOYPATH"})
@@ -97,13 +99,19 @@ def require_abs_wsl_path(value: object, key: str, *, nullable: bool = False) -> 
 def validate_dev_config(path: Path) -> tuple[dict, list[str]]:
     cfg = load_json(path)
     warnings: list[str] = []
-    if cfg.get("schemaVersion") != 1:
-        raise PreflightError(".valheim/dev.json schemaVersion must be 1")
-    if cfg.get("developmentOnly") is not True:
-        raise PreflightError(".valheim/dev.json must set developmentOnly=true; deployment remains blocked otherwise")
+    try:
+        development = parse_development_config(cfg)
+    except ConfigError as exc:
+        raise PreflightError(f".valheim/dev.json: {exc}") from exc
     install = require_abs_wsl_path(cfg.get("valheimInstall"), "valheimInstall")
     client = require_abs_wsl_path(cfg.get("clientPluginDir"), "clientPluginDir")
-    server = require_abs_wsl_path(cfg.get("serverPluginDir"), "serverPluginDir")
+    if development.server_deployment.type == "local":
+        server = require_abs_wsl_path(
+            development.server_deployment.plugin_dir,
+            "serverPluginDir" if cfg["schemaVersion"] == 1 else "server.deployment.pluginDir",
+        )
+    else:
+        server = None
     compose = require_abs_wsl_path(cfg.get("dockerComposeFile"), "dockerComposeFile", nullable=True)
     log_file = require_abs_wsl_path(cfg.get("serverLogFile"), "serverLogFile", nullable=True)
     solution = cfg.get("solution")
@@ -111,8 +119,6 @@ def validate_dev_config(path: Path) -> tuple[dict, list[str]]:
         raise PreflightError(".valheim/dev.json solution must be a non-empty string")
     if not (ROOT / solution).exists():
         raise PreflightError(f"configured solution does not exist: {solution}")
-    if cfg.get("configuration", "Debug") not in {"Debug", "Release"}:
-        raise PreflightError(".valheim/dev.json configuration must be Debug or Release")
     if install is not None and not str(install).startswith("/mnt/"):
         warnings.append(f"valheimInstall is not under /mnt/*: {install}; this is valid only if Valheim is actually available there")
     if client is not None and "BepInEx/plugins" not in str(client).replace("\\", "/"):
@@ -122,7 +128,7 @@ def validate_dev_config(path: Path) -> tuple[dict, list[str]]:
     if log_file is not None and not log_file.exists():
         warnings.append(f"serverLogFile does not exist yet: {log_file}")
     if server is not None and str(server) in {"/", str(Path.home())}:
-        raise PreflightError(f"unsafe serverPluginDir: {server}")
+        raise PreflightError(f"unsafe server deployment directory: {server}")
     return cfg, warnings
 
 
@@ -199,11 +205,32 @@ def main() -> int:
                     "the first full plugin build may fail until you deliberately enable Jotunn prebuild or generate references manually"
                 )
 
-            compose = dev.get("dockerComposeFile")
-            if compose:
+            development = parse_development_config(dev)
+            if dev["schemaVersion"] == 1:
+                compose = dev.get("dockerComposeFile")
+                if compose:
+                    docker = shutil.which("docker")
+                    if not docker:
+                        warnings.append("dockerComposeFile is configured but docker was not found in WSL")
+                    else:
+                        checks["docker"] = docker
+            elif development.server_deployment.type == "ssh":
+                for label, executable in (
+                    ("ssh", development.server_deployment.ssh_executable),
+                    ("scp", development.server_deployment.scp_executable),
+                ):
+                    location = shutil.which(executable)
+                    if not location:
+                        raise PreflightError(f"configured {label} executable was not found: {executable}")
+                    checks[label] = location
+                checks["serverDeployment"] = (
+                    f"ssh:{development.server_deployment.host}:"
+                    f"{development.server_deployment.remote_platform}"
+                )
+            elif development.server_lifecycle.type == "docker":
                 docker = shutil.which("docker")
                 if not docker:
-                    warnings.append("dockerComposeFile is configured but docker was not found in WSL")
+                    warnings.append("Docker lifecycle is configured but docker was not found in WSL")
                 else:
                     checks["docker"] = docker
 

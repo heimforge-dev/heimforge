@@ -77,8 +77,11 @@ function registerTools(): Map<string, ToolDefinition> {
   return tools;
 }
 
-const inspectTool = registerTools().get("valheim_inspect");
+const tools = registerTools();
+const inspectTool = tools.get("valheim_inspect");
 if (!inspectTool) throw new Error("valheim_inspect was not registered by the extension");
+const gameInfoTool = tools.get("valheim_game_info");
+if (!gameInfoTool) throw new Error("valheim_game_info was not registered by the extension");
 
 // Called by every test below with the exact same execute() argument shape
 // (positional signal/onUpdate slots this tool ignores); one named seam keeps
@@ -178,6 +181,22 @@ async function withStubbedPath<T>(binDir: string, fn: () => Promise<T>): Promise
     process.env.PATH = original;
   }
 }
+
+describe("development config credentials", () => {
+  test("schema-v1 credential material is rejected before a tool uses the config", async () => {
+    const { gameRoot } = createGameFixture();
+    const { projectRoot } = setupProject(gameRoot);
+    const configPath = path.join(projectRoot, ".valheim", "dev.json");
+    const config = JSON.parse(readFileSync(configPath, "utf8"));
+    config.authToken = "secret";
+    writeFileSync(configPath, JSON.stringify(config));
+
+    await expect(
+      gameInfoTool.execute("call-1", {}, undefined, undefined, { cwd: projectRoot }),
+    ).rejects.toThrow(/prohibited credential field/);
+  });
+});
+
 
 // --- item 1: reproduce the original lexical-containment bypass pattern ---
 

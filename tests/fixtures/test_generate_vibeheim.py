@@ -49,6 +49,12 @@ class GenerateVibeheimTests(unittest.TestCase):
 
             importlib.reload(generated_package)
             import json
+            dev_example = json.loads((output_dir / ".valheim/dev.json.example").read_text(encoding="utf-8"))
+            self.assertEqual(2, dev_example["schemaVersion"])
+            self.assertEqual("local", dev_example["server"]["deployment"]["type"])
+            self.assertEqual("none", dev_example["server"]["lifecycle"]["type"])
+            self.assertNotIn("serverPluginDir", dev_example)
+
 
             cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
             names = {name for name, _modules, _kind in generated_package.metadata.package_definitions(cfg)}

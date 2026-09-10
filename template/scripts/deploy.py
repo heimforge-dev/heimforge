@@ -7,9 +7,14 @@ import json
 import os
 import shutil
 import stat
+import subprocess
 import sys
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
+
+from dev_config import ConfigError, ServerDeployment, load_development_config
+from remote_deploy import RemoteDeployError, deploy_ssh
 
 import suite_metadata as metadata
 
@@ -21,15 +26,15 @@ class DeployError(RuntimeError):
 
 MANIFEST_VERSION = 1
 
+class LifecycleError(RuntimeError):
+    pass
 
-def load_json(path: Path) -> dict:
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError) as exc:
-        raise DeployError(f"cannot read {path}: {exc}") from exc
-    if not isinstance(value, dict):
-        raise DeployError(f"{path} must contain a JSON object")
-    return value
+
+@dataclass(frozen=True)
+class DeploymentPlan:
+    artifacts: tuple[tuple[str, Path], ...]
+    manifest_filename: str
+    manifest_payload: bytes
 
 
 def safe_destination(raw: str) -> Path:
@@ -276,6 +281,112 @@ def remove_stale_entry(dir_fd: int, name: str) -> bool:
         raise DeployError(f"cannot remove stale deployment entry {name}: {exc}") from exc
     return True
 
+def build_deployment_plan(cfg: dict, target: str, configuration: str) -> DeploymentPlan:
+    projects = cfg["projects"]
+    artifacts = tuple(
+        (module, artifact_for(module, projects[module]["targetFramework"], configuration))
+        for module in modules_for(cfg, target)
+    )
+    desired_names = {source.name for _module, source in artifacts}
+    payload = (json.dumps({"version": MANIFEST_VERSION, "files": sorted(desired_names)}, indent=2) + "\n").encode(
+        "utf-8"
+    )
+    return DeploymentPlan(
+        artifacts=artifacts,
+        manifest_filename=manifest_name(cfg),
+        manifest_payload=payload,
+    )
+
+
+def deploy_local(plan: DeploymentPlan, destination: Path) -> set[str]:
+    destination.mkdir(parents=True, exist_ok=True)
+    dir_fd = open_deployment_dir(destination)
+    try:
+        try:
+            fcntl.flock(dir_fd, fcntl.LOCK_EX)
+        except OSError as exc:
+            raise DeployError(f"cannot acquire deployment lock on {destination}: {exc}") from exc
+        try:
+            desired_names = {source.name for _module, source in plan.artifacts}
+            previously_owned = load_manifest(dir_fd, plan.manifest_filename)
+            for _module, source in plan.artifacts:
+                deploy_dll(source, dir_fd, source.name)
+            stale = previously_owned - desired_names
+            write_manifest(dir_fd, plan.manifest_filename, desired_names)
+            removed = False
+            removal_error = None
+            try:
+                for name in sorted(stale):
+                    if remove_stale_entry(dir_fd, name):
+                        removed = True
+            except DeployError as exc:
+                removal_error = exc
+                raise
+            finally:
+                if removed:
+                    try:
+                        os.fsync(dir_fd)
+                    except OSError as exc:
+                        detail = f"cannot durably commit stale deployment removals: {exc}"
+                        if removal_error is not None:
+                            raise DeployError(f"{removal_error}; additionally, {detail}") from removal_error
+                        raise DeployError(detail) from exc
+        finally:
+            fcntl.flock(dir_fd, fcntl.LOCK_UN)
+        return stale
+    finally:
+        os.close(dir_fd)
+
+
+def restart_local_docker(container: str) -> str:
+    try:
+        result = subprocess.run(
+            ["docker", "restart", container],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError as exc:
+        raise LifecycleError(f"cannot execute docker: {exc}") from exc
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or f"exit {result.returncode}"
+        raise LifecycleError(f"docker restart failed: {detail}")
+    return result.stdout.strip()
+
+
+def _configured_local_destination(development, target: str, override: str | None) -> tuple[ServerDeployment, Path]:
+    if target == "client":
+        raw = override or development.raw.get("clientPluginDir")
+        deployment = ServerDeployment(type="local", plugin_dir=raw if isinstance(raw, str) else None)
+    elif override:
+        deployment = ServerDeployment(type="local", plugin_dir=override)
+    else:
+        deployment = development.server_deployment
+    if deployment.type != "local":
+        raise DeployError("internal error: requested a local destination for a non-local deployment")
+    if not isinstance(deployment.plugin_dir, str) or not deployment.plugin_dir.strip():
+        raise DeployError("no deployment destination supplied and no matching destination configured in .valheim/dev.json")
+    return deployment, safe_destination(deployment.plugin_dir)
+
+
+def _check_other_local_destination(development, target: str, destination: Path) -> None:
+    if target == "client":
+        if development.server_deployment.type != "local":
+            return
+        other_key = "server deployment"
+        other_raw = development.server_deployment.plugin_dir
+    else:
+        other_key = "clientPluginDir"
+        other_raw = development.raw.get(other_key)
+    if isinstance(other_raw, str) and other_raw.strip():
+        other_destination = safe_destination(other_raw)
+        if _same_destination(destination, other_destination):
+            raise DeployError(
+                f"{target} destination {destination} must not resolve to the same directory as "
+                f"the other role's configured {other_key} ({other_destination}); use separate "
+                "client/server suite directories"
+            )
+
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -283,9 +394,15 @@ def main() -> int:
     parser.add_argument("--configuration", choices=("Debug", "Release"), default="Debug")
     parser.add_argument("--destination")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--restart", action="store_true", help="Restart the configured server lifecycle after deployment")
     args = parser.parse_args()
 
+    remote_host = None
+    deployment = None
+    development = None
     try:
+        if args.restart and args.target != "server":
+            raise DeployError("--restart is only valid for server deployment")
         cfg = metadata.load_config()
         metadata.validate(cfg)
         metadata.validate_identity(cfg)
@@ -302,84 +419,78 @@ def main() -> int:
                 "not a runtime BepInEx plugin, and deploying only Common would create an ownership "
                 f"manifest for a {args.target} side with nothing to load"
             )
-        dev_path = ROOT / ".valheim" / "dev.json"
-        dev = load_json(dev_path)
-        if dev.get("schemaVersion") != 1:
-            raise DeployError(".valheim/dev.json schemaVersion must be 1")
-        if dev.get("developmentOnly") is not True:
-            raise DeployError(".valheim/dev.json must set developmentOnly=true before deployment")
-        raw_dest = args.destination
-        if not raw_dest:
-            key = "clientPluginDir" if args.target == "client" else "serverPluginDir"
-            raw_dest = dev.get(key)
-        if not isinstance(raw_dest, str) or not raw_dest.strip():
-            raise DeployError("no deployment destination supplied and no matching destination configured in .valheim/dev.json")
-        destination = safe_destination(raw_dest)
-        other_key = "serverPluginDir" if args.target == "client" else "clientPluginDir"
-        other_raw = dev.get(other_key)
-        if isinstance(other_raw, str) and other_raw.strip():
-            other_destination = safe_destination(other_raw)
-            if _same_destination(destination, other_destination):
-                raise DeployError(
-                    f"{args.target} destination {destination} must not resolve to the same directory as "
-                    f"the other role's configured {other_key} ({other_destination}); use separate "
-                    "client/server suite directories"
-                )
-        projects = cfg["projects"]
-        modules = modules_for(cfg, args.target)
-        artifacts = [(module, artifact_for(module, projects[module]["targetFramework"], args.configuration)) for module in modules]
+        try:
+            development = load_development_config(ROOT / ".valheim" / "dev.json")
+        except ConfigError as exc:
+            raise DeployError(f".valheim/dev.json: {exc}") from exc
 
+        if args.target == "client" or args.destination:
+            deployment, destination = _configured_local_destination(
+                development, args.target, args.destination
+            )
+            _check_other_local_destination(development, args.target, destination)
+            destination_display = str(destination)
+        else:
+            deployment = development.server_deployment
+            if not isinstance(deployment.plugin_dir, str) or not deployment.plugin_dir.strip():
+                raise DeployError("no server deployment destination configured in .valheim/dev.json")
+            destination = None
+            destination_display = (
+                str(safe_destination(deployment.plugin_dir))
+                if deployment.type == "local"
+                else f"ssh://{deployment.host}/{deployment.plugin_dir}"
+            )
+
+        plan = build_deployment_plan(cfg, args.target, args.configuration)
         print(f"target: {args.target}")
-        print(f"destination: {destination}")
-        for module, source in artifacts:
+        print(f"destination: {destination_display}")
+        for module, source in plan.artifacts:
             print(f"  {module}: {source.relative_to(ROOT)}")
         if args.dry_run:
             return 0
-        destination.mkdir(parents=True, exist_ok=True)
-        dir_fd = open_deployment_dir(destination)
-        try:
-            manifest_filename = manifest_name(cfg)
-            try:
-                fcntl.flock(dir_fd, fcntl.LOCK_EX)
-            except OSError as exc:
-                raise DeployError(f"cannot acquire deployment lock on {destination}: {exc}") from exc
-            try:
-                desired_names = {source.name for _module, source in artifacts}
-                previously_owned = load_manifest(dir_fd, manifest_filename)
-                for _module, source in artifacts:
-                    deploy_dll(source, dir_fd, source.name)
-                stale = sorted(previously_owned - desired_names)
-                write_manifest(dir_fd, manifest_filename, desired_names)
-                removed = False
-                removal_error = None
-                try:
-                    for name in stale:
-                        if remove_stale_entry(dir_fd, name):
-                            removed = True
-                except DeployError as exc:
-                    removal_error = exc
-                    raise
-                finally:
-                    if removed:
-                        try:
-                            os.fsync(dir_fd)
-                        except OSError as exc:
-                            detail = f"cannot durably commit stale deployment removals: {exc}"
-                            if removal_error is not None:
-                                # Keep the removal failure primary without hiding failed durability.
-                                raise DeployError(f"{removal_error}; additionally, {detail}") from removal_error
-                            raise DeployError(detail) from exc
-            finally:
-                fcntl.flock(dir_fd, fcntl.LOCK_UN)
-            if stale:
-                print("removed stale suite DLLs: " + ", ".join(stale))
-            print(f"deployed {len(artifacts)} DLL(s)")
-        finally:
-            os.close(dir_fd)
-        return 0
-    except (DeployError, metadata.MetadataError) as exc:
+
+        if deployment.type == "local":
+            if destination is None:
+                destination = safe_destination(deployment.plugin_dir or "")
+                _check_other_local_destination(development, args.target, destination)
+            stale = deploy_local(plan, destination)
+        elif deployment.type == "ssh":
+            remote_host, platform, stale = deploy_ssh(
+                deployment,
+                [source for _module, source in plan.artifacts],
+                plan.manifest_filename,
+                plan.manifest_payload,
+            )
+            print(f"remote platform: {platform}")
+        else:
+            raise DeployError(f"unsupported deployment type: {deployment.type}")
+
+        if stale:
+            print("removed stale suite DLLs: " + ", ".join(sorted(stale)))
+        print(f"deployed {len(plan.artifacts)} DLL(s)")
+    except (DeployError, ConfigError, RemoteDeployError, metadata.MetadataError) as exc:
         print(f"deploy error: {exc}", file=sys.stderr)
         return 2
+
+    if args.restart:
+        try:
+            lifecycle = development.server_lifecycle
+            if lifecycle.type == "none":
+                raise LifecycleError("server lifecycle type is none; configure docker to use --restart")
+            if lifecycle.type != "docker" or lifecycle.container is None:
+                raise LifecycleError(f"unsupported server lifecycle type: {lifecycle.type}")
+            output = (
+                restart_local_docker(lifecycle.container)
+                if deployment.type == "local"
+                else remote_host.restart_docker(lifecycle.container)
+            )
+            print(f"restarted Docker container: {lifecycle.container}")
+            if output:
+                print(output)
+        except (LifecycleError, RemoteDeployError) as exc:
+            print(f"lifecycle error (deployment succeeded): {exc}", file=sys.stderr)
+            return 3
+    return 0
 
 if __name__ == "__main__":
     raise SystemExit(main())

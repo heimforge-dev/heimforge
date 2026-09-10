@@ -153,8 +153,8 @@ def import_deploy_from(scripts_dir: Path):
     previous = sys.dont_write_bytecode
     sys.dont_write_bytecode = True
     try:
-        sys.modules.pop("deploy", None)
-        sys.modules.pop("suite_metadata", None)
+        for name in ("deploy", "dev_config", "remote_deploy", "suite_metadata"):
+            sys.modules.pop(name, None)
         import deploy as dm
 
         importlib.reload(dm)

@@ -15,7 +15,7 @@ Avoid putting the repository under `/mnt/c/...`. Windows remains the actual Valh
 - pinned BepInExPack installed in the development Valheim installation
 - pinned Jötunn runtime installed in that development installation
 - optional `ilspycmd` in WSL for assembly inspection
-- Docker / Docker Compose when using the dedicated-server workflow
+- Docker when using the optional Docker server lifecycle
 
 `Microsoft.NETFramework.ReferenceAssemblies` is included as a development-only package for the `net48` plugin projects so WSL does not depend on a Windows-installed .NET Framework targeting pack.
 
@@ -28,6 +28,83 @@ Copy `.valheim/dev.json.example` to `.valheim/dev.json` and edit development pat
 Both files are ignored by Git.
 
 The Valheim install path in both files must agree. `./scripts/preflight.sh` validates this to prevent accidentally inspecting/building against one installation while deploying to another.
+
+## Server deployment
+
+Server artifact planning, deployment transport, and lifecycle control are separate concerns:
+
+```text
+suite metadata -> server DeploymentPlan -> local or SSH deployment
+                                      \-> none or Docker lifecycle
+```
+
+Changing transport never changes which modules enter the server plan. The local and SSH backends receive the same exact metadata-derived DLL list.
+
+### Local transport
+
+The generated schema-v2 example uses a local suite-specific destination:
+
+```json
+{
+  "server": {
+    "deployment": {
+      "type": "local",
+      "pluginDir": "/home/user/valheim-dev/BepInEx/plugins/SampleSuite"
+    },
+    "lifecycle": {
+      "type": "none"
+    }
+  }
+}
+```
+
+Local deployment retains the directory-FD locking, no-follow writes, atomic file replacement, ownership manifest, stale-owned-file cleanup, and durability checks implemented by `scripts/deploy.py`.
+
+### SSH transport
+
+Use an SSH config alias as `host`. User names, addresses, ports, keys, agents, and jump hosts belong in `~/.ssh/config`, not `.valheim/dev.json`. Password, private-key, and private-key-content fields are rejected.
+
+```json
+{
+  "server": {
+    "deployment": {
+      "type": "ssh",
+      "host": "gameserver",
+      "remotePlatform": "posix",
+      "pluginDir": "/srv/valheim/BepInEx/plugins/SampleSuite"
+    },
+    "lifecycle": {
+      "type": "docker",
+      "container": "valheim-server"
+    }
+  }
+}
+```
+
+`remotePlatform` accepts `auto`, `posix`, or `windows` and defaults to `auto`. Set it explicitly when probing is unavailable or ambiguous. Windows drive paths use a form such as `D:/Servers/Valheim/BepInEx/plugins/SampleSuite`.
+
+The transport normally invokes OpenSSH-compatible `ssh` and `scp` from `PATH`. Uploads force `scp`'s SFTP protocol so configured path characters never cross the legacy SCP remote-shell parsing boundary. Environments that intentionally use different clients can set `sshExecutable` and `scpExecutable` inside `server.deployment`; these are executable paths or names, not authentication settings, and an `scpExecutable` override must support OpenSSH's `-s` option.
+
+SSH deployment creates a unique sibling staging directory, uploads the exact plan and ownership manifest, verifies names and SHA-256 hashes, then promotes only suite-owned entries. Upload or verification failure leaves the live directory untouched; promotion attempts rollback from a unique sibling backup. Unrelated live files are preserved and only manifest-owned stale files are removed.
+
+Generic SSH cannot reproduce the local backend's retained-directory-FD lock and inode binding across separate SSH/SCP processes. Remote scripts therefore reject non-canonical POSIX parents, symlinked destinations, Windows reparse points, unsafe roots, raw `BepInEx/plugins`, changed live manifests, and unexpected file types. POSIX bind mounts and other mount aliases are not comprehensively detectable, so a canonical-looking remote parent can still resolve elsewhere. Hash verification is point-in-time rather than inode-bound against another writer. Rollback is best-effort: a remote process or host failure that prevents rollback can leave partial live state, and remote promotion has no local-equivalent `fsync` durability guarantee. No subprocess timeout is imposed on remote operations; bound them with `~/.ssh/config` options such as `ConnectTimeout` and `ServerAliveInterval`. Restrict remote write access and do not run concurrent remote deployments to the same suite directory.
+
+### Lifecycle
+
+Deployment never restarts a server implicitly:
+
+```bash
+./scripts/deploy-server.sh Debug
+./scripts/deploy-server.sh Debug --restart
+```
+
+`--restart` runs the configured lifecycle only after deployment succeeds. `type: "docker"` executes `docker restart` locally for local transport and through the configured SSH host for SSH transport. `type: "none"` has no restart operation. A lifecycle failure is reported separately after the successful deployment remains in place. Docker Compose is not assumed.
+
+The OMP status and log tools delegate to `scripts/server_runtime.py`; the extension never constructs SSH or Docker commands. Schema-v2 Docker status/log operations run beside the configured container, locally or through SSH. `serverLogFile` remains a local bounded-tail source, and schema-v1 Docker Compose status/log behavior remains compatible.
+
+### Schema-v1 compatibility
+
+Existing schema-v1 files remain valid. `serverPluginDir` keeps its legacy local-deployment meaning; legacy Docker Compose/log fields remain available to legacy extension tools. To migrate, set `schemaVersion` to `2`, move `serverPluginDir` to `server.deployment.pluginDir`, select `server.deployment.type`, and add an independent `server.lifecycle` object.
 
 ## Metadata workflow
 

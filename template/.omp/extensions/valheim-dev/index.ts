@@ -8,14 +8,30 @@ const MAX_BUFFER = 16 * 1024 * 1024;
 
 type BuildConfiguration = "Debug" | "Release";
 
+type ServerDeployment =
+  | { type: "local"; pluginDir: string }
+  | {
+      type: "ssh";
+      host: string;
+      pluginDir: string;
+      remotePlatform?: "auto" | "windows" | "posix";
+      sshExecutable?: string;
+      scpExecutable?: string;
+    };
+
+type ServerLifecycle =
+  | { type: "none" }
+  | { type: "docker"; container: string };
+
 type DevConfig = {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   developmentOnly: boolean;
   valheimInstall: string;
   clientPluginDir: string;
-  serverPluginDir: string;
+  serverPluginDir?: string;
   dockerComposeFile?: string | null;
   dockerService?: string | null;
+  server?: { deployment: ServerDeployment; lifecycle: ServerLifecycle };
   serverLogFile?: string | null;
   solution?: string;
   configuration?: BuildConfiguration;
@@ -62,10 +78,34 @@ async function readJsonObject<T>(file: string): Promise<T> {
   }
 }
 
+function rejectUnknownFields(value: object, allowed: readonly string[], field: string): void {
+  const unexpected = Object.keys(value).filter(key => !allowed.includes(key)).sort();
+  if (unexpected.length) throw new Error(`${field} contains unsupported field(s): ${unexpected.join(", ")}`);
+}
+
+function rejectCredentialFields(value: object, configPath: string): void {
+  const credentialFields = Object.keys(value).filter((field) => {
+    const normalized = field.replaceAll("-", "").replaceAll("_", "").toLowerCase();
+    return normalized.includes("password") ||
+      normalized.includes("privatekey") ||
+      normalized.endsWith("token") ||
+      ["identityfile", "sshkey", "keymaterial"].includes(normalized);
+  }).sort();
+  if (credentialFields.length) {
+    throw new Error(
+      `${configPath} contains prohibited credential field(s): ${credentialFields.join(", ")}; ` +
+      "keep SSH authentication material in SSH configuration",
+    );
+  }
+}
+
 function validateDevConfig(cfg: DevConfig, configPath: string): void {
-  if (cfg.schemaVersion !== 1) throw new Error(`${configPath}: schemaVersion must be 1`);
+  if (cfg.schemaVersion !== 1 && cfg.schemaVersion !== 2) {
+    throw new Error(`${configPath}: schemaVersion must be 1 or 2`);
+  }
   if (cfg.developmentOnly !== true) throw new Error(`${configPath}: developmentOnly must be true`);
-  for (const key of ["valheimInstall", "clientPluginDir", "serverPluginDir"] as const) {
+  rejectCredentialFields(cfg, configPath);
+  for (const key of ["valheimInstall", "clientPluginDir"] as const) {
     const value = cfg[key];
     if (typeof value !== "string" || !value.trim() || !path.isAbsolute(value)) {
       throw new Error(`${configPath}: ${key} must be a non-empty absolute WSL/Linux path`);
@@ -74,11 +114,70 @@ function validateDevConfig(cfg: DevConfig, configPath: string): void {
   if (cfg.configuration && cfg.configuration !== "Debug" && cfg.configuration !== "Release") {
     throw new Error(`${configPath}: configuration must be Debug or Release`);
   }
-  for (const key of ["dockerComposeFile", "serverLogFile"] as const) {
-    const value = cfg[key];
-    if (value != null && (typeof value !== "string" || !value.trim() || !path.isAbsolute(value))) {
-      throw new Error(`${configPath}: ${key} must be null or an absolute WSL/Linux path`);
+  if (cfg.serverLogFile != null &&
+      (typeof cfg.serverLogFile !== "string" || !cfg.serverLogFile.trim() || !path.isAbsolute(cfg.serverLogFile))) {
+    throw new Error(`${configPath}: serverLogFile must be null or an absolute WSL/Linux path`);
+  }
+  if (cfg.schemaVersion === 1) {
+    if (typeof cfg.serverPluginDir !== "string" || !cfg.serverPluginDir.trim() || !path.isAbsolute(cfg.serverPluginDir)) {
+      throw new Error(`${configPath}: serverPluginDir must be a non-empty absolute WSL/Linux path`);
     }
+    if (cfg.dockerComposeFile != null &&
+        (typeof cfg.dockerComposeFile !== "string" || !cfg.dockerComposeFile.trim() || !path.isAbsolute(cfg.dockerComposeFile))) {
+      throw new Error(`${configPath}: dockerComposeFile must be null or an absolute WSL/Linux path`);
+    }
+    return;
+  }
+  rejectUnknownFields(
+    cfg,
+    ["schemaVersion", "developmentOnly", "valheimInstall", "clientPluginDir", "server", "serverLogFile", "solution", "configuration"],
+    configPath,
+  );
+  if (!cfg.server || typeof cfg.server !== "object") throw new Error(`${configPath}: server must be an object`);
+  rejectUnknownFields(cfg.server, ["deployment", "lifecycle"], `${configPath}: server`);
+  const deployment = cfg.server.deployment;
+  if (!deployment || (deployment.type !== "local" && deployment.type !== "ssh")) {
+    throw new Error(`${configPath}: server.deployment.type must be local or ssh`);
+  }
+  rejectUnknownFields(
+    deployment,
+    deployment.type === "local"
+      ? ["type", "pluginDir"]
+      : ["type", "host", "pluginDir", "remotePlatform", "sshExecutable", "scpExecutable"],
+    `${configPath}: server.deployment`,
+  );
+  if (typeof deployment.pluginDir !== "string" || !deployment.pluginDir.trim()) {
+    throw new Error(`${configPath}: server.deployment.pluginDir must be a non-empty string`);
+  }
+  if (deployment.type === "local" && !path.isAbsolute(deployment.pluginDir)) {
+    throw new Error(`${configPath}: local server.deployment.pluginDir must be an absolute WSL/Linux path`);
+  }
+  if (deployment.type === "ssh") {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(deployment.host)) {
+      throw new Error(`${configPath}: server.deployment.host must be an SSH config alias`);
+    }
+    if (deployment.remotePlatform && !["auto", "windows", "posix"].includes(deployment.remotePlatform)) {
+      throw new Error(`${configPath}: server.deployment.remotePlatform must be auto, windows, or posix`);
+    }
+    for (const key of ["sshExecutable", "scpExecutable"] as const) {
+      const value = deployment[key];
+      if (value != null && (typeof value !== "string" || !value.trim())) {
+        throw new Error(`${configPath}: server.deployment.${key} must be a non-empty string`);
+      }
+    }
+  }
+  const lifecycle = cfg.server.lifecycle;
+  if (!lifecycle || (lifecycle.type !== "none" && lifecycle.type !== "docker")) {
+    throw new Error(`${configPath}: server.lifecycle.type must be none or docker`);
+  }
+  rejectUnknownFields(
+    lifecycle,
+    lifecycle.type === "none" ? ["type"] : ["type", "container"],
+    `${configPath}: server.lifecycle`,
+  );
+  if (lifecycle.type === "docker" &&
+      (typeof lifecycle.container !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(lifecycle.container))) {
+    throw new Error(`${configPath}: server.lifecycle.container must be a Docker container name`);
   }
 }
 
@@ -199,10 +298,6 @@ export async function resolveCanonicalManagedAssembly(canonicalManagedRoot: stri
   return canonical;
 }
 
-async function tailFile(file: string, lineCount: number): Promise<string> {
-  const raw = await fs.readFile(file, "utf8");
-  return raw.split(/\r?\n/).slice(-lineCount).join("\n").trim();
-}
 
 export default function valheimDev(pi: ExtensionAPI) {
   const z = pi.zod;
@@ -252,10 +347,12 @@ export default function valheimDev(pi: ExtensionAPI) {
         assemblyCSharpSha256: assemblyExists ? await sha256(assembly) : null,
         bepinEx: (await fileExists(bepinEx)) ? bepinEx : null,
         jotunn,
-        clientPluginDir: cfg.clientPluginDir,
-        serverPluginDir: cfg.serverPluginDir,
-        dockerComposeFile: cfg.dockerComposeFile ?? null,
-        dockerService: cfg.dockerService ?? null,
+        serverDeployment: cfg.schemaVersion === 1
+          ? { type: "local", pluginDir: cfg.serverPluginDir }
+          : cfg.server!.deployment,
+        serverLifecycle: cfg.schemaVersion === 1
+          ? { type: "legacy", dockerComposeFile: cfg.dockerComposeFile ?? null, dockerService: cfg.dockerService ?? null }
+          : cfg.server!.lifecycle,
         serverLogFile: cfg.serverLogFile ?? null,
       };
       return { content: [{ type: "text", text: JSON.stringify(checks, null, 2) }], details: checks };
@@ -323,6 +420,7 @@ export default function valheimDev(pi: ExtensionAPI) {
       target: z.enum(["client", "server"]),
       confirm: z.boolean().describe("Must be true"),
       configuration: z.enum(["Debug", "Release"]).optional(),
+      restart: z.boolean().optional().describe("Restart the configured server lifecycle after deployment"),
     }),
     async execute(_id, params, signal, _onUpdate, ctx) {
       const root = await findProjectRoot(ctx.cwd);
@@ -330,9 +428,11 @@ export default function valheimDev(pi: ExtensionAPI) {
       if (cfg.developmentOnly !== true) throw new Error("deployment blocked: developmentOnly must be true");
       if (params.confirm !== true) throw new Error("deployment blocked: confirm must be true");
       const configuration = params.configuration ?? cfg.configuration ?? "Debug";
+      const argv = ["scripts/deploy.py", "--target", params.target, "--configuration", configuration];
+      if (params.restart) argv.push("--restart");
       const output = await run(
         "python3",
-        ["scripts/deploy.py", "--target", params.target, "--configuration", configuration],
+        argv,
         root,
         signal,
       );
@@ -343,54 +443,34 @@ export default function valheimDev(pi: ExtensionAPI) {
   pi.registerTool({
     name: "valheim_logs",
     label: "Valheim Server Logs",
-    description: "Read a bounded tail from the configured development server log source. Uses either a log file or docker compose logs, never an arbitrary configured command.",
+    description: "Read a bounded tail from the configured local or remote server log source.",
     approval: "exec",
     parameters: z.object({
       tail: z.number().int().min(10).max(2000).optional().describe("Number of lines, default 250"),
     }),
     async execute(_id, params, signal, _onUpdate, ctx) {
       const root = await findProjectRoot(ctx.cwd);
-      const cfg = await loadDevConfig(root);
       const tail = params.tail ?? 250;
-      let output: string;
-      let source: string;
-      if (cfg.serverLogFile) {
-        output = await tailFile(cfg.serverLogFile, tail);
-        source = cfg.serverLogFile;
-      } else if (cfg.dockerComposeFile && cfg.dockerService) {
-        output = await run(
-          "docker",
-          ["compose", "-f", cfg.dockerComposeFile, "logs", "--tail", String(tail), cfg.dockerService],
-          root,
-          signal,
-        );
-        source = `${cfg.dockerComposeFile}:${cfg.dockerService}`;
-      } else {
-        throw new Error("configure serverLogFile or both dockerComposeFile and dockerService in .valheim/dev.json");
-      }
-      return { content: [{ type: "text", text: output || "No log output." }], details: { source, tail } };
+      const output = await run(
+        "python3",
+        ["scripts/server_runtime.py", "logs", "--tail", String(tail)],
+        root,
+        signal,
+      );
+      return { content: [{ type: "text", text: output || "No log output." }], details: { tail } };
     },
   });
 
   pi.registerTool({
     name: "valheim_server_status",
     label: "Valheim Dev Server Status",
-    description: "Read docker compose status for the explicitly configured development server service.",
+    description: "Read status from the configured local or remote server lifecycle.",
     approval: "exec",
     parameters: z.object({}),
     async execute(_id, _params, signal, _onUpdate, ctx) {
       const root = await findProjectRoot(ctx.cwd);
-      const cfg = await loadDevConfig(root);
-      if (!cfg.dockerComposeFile || !cfg.dockerService) {
-        throw new Error("dockerComposeFile and dockerService must be configured in .valheim/dev.json");
-      }
-      const output = await run(
-        "docker",
-        ["compose", "-f", cfg.dockerComposeFile, "ps", cfg.dockerService],
-        root,
-        signal,
-      );
-      return { content: [{ type: "text", text: output || "No service status output." }], details: { service: cfg.dockerService } };
+      const output = await run("python3", ["scripts/server_runtime.py", "status"], root, signal);
+      return { content: [{ type: "text", text: output || "No server status output." }], details: {} };
     },
   });
 
