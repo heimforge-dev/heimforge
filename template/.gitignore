@@ -8,6 +8,7 @@ TestResults/
 __pycache__/
 *.pyc
 *.pyo
+.suite-metadata-sync-recovery-*.json
 
 # Local Valheim/Jotunn development configuration
 Environment.props

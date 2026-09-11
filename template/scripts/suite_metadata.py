@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import re
@@ -1238,14 +1239,14 @@ def promote_temp_file(
         raise error_cls(f"generated output {final_name} changed during promotion")
 
 
-def atomic_write_text(
+def atomic_write_bytes(
     path: Path,
-    content: str,
+    content: bytes,
     *,
     parent: _OutputParent | None = None,
     final_target: _FinalTarget | object = _UNSET,
 ) -> None:
-    """Atomically replace text through an authorized parent directory FD."""
+    """Atomically replace bytes through an authorized parent directory FD."""
     owns_parent = parent is None
     if parent is None:
         parent, final_name = open_confined_parent(path)
@@ -1258,8 +1259,7 @@ def atomic_write_text(
     promoted = False
     try:
         temp = create_temp_file(parent, final_name, error_cls=MetadataError)
-        with os.fdopen(os.dup(temp.file_fd), "w", encoding="utf-8", newline="\n") as output:
-            output.write(content)
+        _write_all(temp.file_fd, content, error_cls=MetadataError)
         promote_temp_file(parent, temp, final_name, final_target=final_target, error_cls=MetadataError)
         promoted = True
     finally:
@@ -1270,6 +1270,105 @@ def atomic_write_text(
             temp.close()
         if owns_parent:
             parent.close()
+
+
+def atomic_write_text(
+    path: Path,
+    content: str,
+    *,
+    parent: _OutputParent | None = None,
+    final_target: _FinalTarget | object = _UNSET,
+) -> None:
+    """Atomically replace UTF-8 text through an authorized parent directory FD."""
+    atomic_write_bytes(path, content.encode("utf-8"), parent=parent, final_target=final_target)
+
+
+def _read_retained_final(final_target: _FinalTarget) -> bytes | None:
+    if final_target.fd is None:
+        return None
+    try:
+        size = os.fstat(final_target.fd).st_size
+        chunks: list[bytes] = []
+        offset = 0
+        while offset < size:
+            chunk = os.pread(final_target.fd, min(_RECOVERY_CHUNK_SIZE, size - offset), offset)
+            if not chunk:
+                raise MetadataError("generated output disappeared while preparing transaction rollback")
+            chunks.append(chunk)
+            offset += len(chunk)
+        return b"".join(chunks)
+    except OSError as exc:
+        raise MetadataError("cannot snapshot generated output for transaction rollback") from exc
+
+
+def _remove_generated_output(path: Path) -> None:
+    parent, final_name = open_confined_parent(path)
+    try:
+        parent.verify(MetadataError)
+        _ensure_final_absent(parent, final_name, error_cls=MetadataError)
+    finally:
+        parent.close()
+
+
+def _write_sync_recovery(snapshots: list[tuple[Path, bytes | None]]) -> Path:
+    recovery_path = ROOT / f".suite-metadata-sync-recovery-{uuid.uuid4().hex}.json"
+    recovery = {
+        "schemaVersion": 1,
+        "generatedFrom": "suite.config.json",
+        "outputs": [
+            {
+                "path": str(path.relative_to(ROOT)),
+                "original": None if original is None else base64.b64encode(original).decode("ascii"),
+            }
+            for path, original in snapshots
+        ],
+    }
+    atomic_write_text(recovery_path, json.dumps(recovery, indent=2) + "\n")
+    return recovery_path
+
+
+def _restore_sync_outputs(snapshots: list[tuple[Path, bytes | None]]) -> None:
+    failures: list[str] = []
+    for path, original in reversed(snapshots):
+        try:
+            if original is None:
+                _remove_generated_output(path)
+            else:
+                atomic_write_bytes(path, original)
+        except BaseException as exc:
+            failures.append(f"{path.relative_to(ROOT)}: {exc}")
+    if failures:
+        try:
+            recovery_path = _write_sync_recovery(snapshots)
+        except BaseException as recovery_exc:
+            raise MetadataError(
+                "generated metadata transaction rollback was incomplete and recovery data could not be saved: "
+                + "; ".join(failures)
+                + f"; recovery write failed: {recovery_exc}"
+            ) from recovery_exc
+        raise MetadataError(
+            "generated metadata transaction rollback was incomplete; original bytes were saved in "
+            f"{recovery_path.relative_to(ROOT)}: " + "; ".join(failures)
+        )
+
+def _promote_sync_outputs(outputs: list[tuple[Path, str, _OutputParent, _FinalTarget]]) -> None:
+    snapshots = [
+        (path, _read_retained_final(final_target))
+        for path, _content, _parent, final_target in outputs
+    ]
+    attempted: list[tuple[Path, bytes | None]] = []
+    try:
+        for output, snapshot in zip(outputs, snapshots):
+            path, content, parent, final_target = output
+            attempted.append(snapshot)
+            atomic_write_text(path, content, parent=parent, final_target=final_target)
+            print(f"wrote {path.relative_to(ROOT)}")
+    except BaseException as exc:
+        try:
+            _restore_sync_outputs(attempted)
+        except MetadataError as rollback_exc:
+            raise rollback_exc from exc
+        raise
 
 
 def sync(cfg: dict, *, structural_only: bool = False) -> None:
@@ -1286,9 +1385,7 @@ def sync(cfg: dict, *, structural_only: bool = False) -> None:
                 parent.close()
                 raise
             outputs.append((path, content, parent, final_target))
-        for path, content, parent, final_target in outputs:
-            atomic_write_text(path, content, parent=parent, final_target=final_target)
-            print(f"wrote {path.relative_to(ROOT)}")
+        _promote_sync_outputs(outputs)
     finally:
         for _path, _content, parent, final_target in outputs:
             final_target.close()
