@@ -27,10 +27,8 @@ Note: the module list below reflects the initial scaffold selection made when th
 6. Load OMP and verify the `valheim-dev` extension/tools.
 7. Design and implement the first real feature using `docs/features/TEMPLATE.md`.
 
-## Known Issues / Deliberate Incompleteness
-
 - Installed Valheim version is not yet recorded.
-- Runtime-side detection code must be verified against current APIs before feature activation.
+- Runtime gameplay behavior and multiplayer compatibility still require verification on the user's installation.
 - Public Thunderstore manifests/assets are not generated yet. Local deterministic ZIP packaging is implemented.
 
 ## Last Verified

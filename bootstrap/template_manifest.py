@@ -120,6 +120,7 @@ OPTIONAL_TEMPLATE_FILES: dict[str, frozenset[str]] = {
     ),
     "shared_diagnostics": frozenset(
         {
+            "src/__ROOT_NAMESPACE__.Shared.Diagnostics/DiagnosticRpc.cs",
             "src/__ROOT_NAMESPACE__.Shared.Diagnostics/Plugin.cs",
             "src/__ROOT_NAMESPACE__.Shared.Diagnostics/__ROOT_NAMESPACE__.Shared.Diagnostics.csproj",
         }

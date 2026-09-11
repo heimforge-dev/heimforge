@@ -1,4 +1,5 @@
 using BepInEx;
+using Jotunn.Managers;
 using Jotunn.Utils;
 using {{ROOT_NAMESPACE}}.Common;
 using {{ROOT_NAMESPACE}}.Common.Modules;
@@ -23,6 +24,6 @@ public sealed class Plugin : BaseUnityPlugin
     private void Awake()
     {
         Logger.LogInfo($"{PluginName} {PluginVersion} loaded. No gameplay features are active in the scaffold.");
-        Logger.LogInfo("Before activating server-only features, verify dedicated-server side detection against the current Valheim/Jotunn runtime.");
+        Logger.LogInfo($"ServerCore process mode: {(GUIManager.IsHeadless() ? "headless/dedicated" : "graphical")}.");
     }
 }

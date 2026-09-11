@@ -1,4 +1,5 @@
 using BepInEx;
+using Jotunn.Managers;
 using Jotunn.Utils;
 using {{ROOT_NAMESPACE}}.Common;
 using {{ROOT_NAMESPACE}}.Common.Modules;
@@ -22,9 +23,20 @@ public sealed class Plugin : BaseUnityPlugin
         PluginVersion,
         ProtocolVersion);
 
+    private DiagnosticRpc? diagnosticRpc;
+
     private void Awake()
     {
         Logger.LogInfo($"{PluginName} {PluginVersion} protocol {ProtocolVersion} loaded.");
-        Logger.LogInfo("Diagnostic CustomRPC is intentionally left for bootstrap Milestone 2 so exact current Jotunn signatures are verified before implementation.");
+        Logger.LogInfo($"Shared.Diagnostics process mode: {(GUIManager.IsHeadless() ? "headless/dedicated" : "graphical")}.");
+
+        diagnosticRpc = new DiagnosticRpc(Logger);
+        diagnosticRpc.Initialize();
+    }
+
+    private void OnDestroy()
+    {
+        diagnosticRpc?.Dispose();
+        diagnosticRpc = null;
     }
 }
