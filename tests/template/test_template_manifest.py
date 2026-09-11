@@ -257,6 +257,8 @@ class ManifestIndependentSanityTests(unittest.TestCase):
             "scripts/dev_config.py",
             "scripts/remote_deploy.py",
             "scripts/server_runtime.py",
+            "scripts/refresh-references.sh",
+            "scripts/update-game-stack.py",
             "tests/scaffold/test_scaffold.py",
             "src/__ROOT_NAMESPACE__.Common/__ROOT_NAMESPACE__.Common.csproj",
             "tests/__ROOT_NAMESPACE__.Common.Tests/__ROOT_NAMESPACE__.Common.Tests.csproj",

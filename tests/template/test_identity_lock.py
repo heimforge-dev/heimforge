@@ -27,9 +27,10 @@ from pathlib import Path
 
 from tests.fixtures._helpers import generate_into_temp, import_scripts_from, run_deploy, write_dev_json, write_fake_artifacts
 
+DEFAULT_DEPENDENCY_BASELINE = {"jotunnVersion": "2.30.0", "bepInExPackVersion": "5.4.2350", "netFrameworkReferenceAssembliesVersion": "1.0.3"}
 STALE_DEPENDENCY_BASELINE = {"jotunnVersion": "2.29.2", "bepInExPackVersion": "5.4.2333", "netFrameworkReferenceAssembliesVersion": "1.0.3"}
 NEW_DEPENDENCY_VERSIONS = {"jotunnVersion": "9.9.9", "bepInExPackVersion": "8.8.8", "netFrameworkReferenceAssembliesVersion": "7.7.7"}
-RENDERED_DOCS = ("README.md", ".context/PROJECT.md", ".context/VALHEIM.md", ".context/CURRENT_STATE.md", "docs/dependencies.md")
+RENDERED_DOCS = ("README.md", ".context/PROJECT.md", ".context/VALHEIM.md", ".context/CURRENT_STATE.md", "docs/dependencies.md", "docs/development.md")
 
 
 def _load_cfg(project_dir: Path) -> dict:
@@ -155,10 +156,11 @@ class DependencyVersionAuditRegressionTests(unittest.TestCase):
         self.params, self.output_dir, result = generate_into_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
-        for key, value in STALE_DEPENDENCY_BASELINE.items():
+        for key, value in DEFAULT_DEPENDENCY_BASELINE.items():
             self.assertEqual(value, self.cfg[key], key)
 
     def test_sync_and_check_succeed_and_generated_outputs_use_the_new_versions(self) -> None:
+        _save_cfg(self.output_dir, dict(self.cfg, **STALE_DEPENDENCY_BASELINE))
         cfg = dict(self.cfg, **NEW_DEPENDENCY_VERSIONS)
         _save_cfg(self.output_dir, cfg)
 
@@ -174,7 +176,8 @@ class DependencyVersionAuditRegressionTests(unittest.TestCase):
         self.assertEqual(NEW_DEPENDENCY_VERSIONS["jotunnVersion"], lock["dependencies"]["ValheimModding-Jotunn"])
         self.assertEqual(NEW_DEPENDENCY_VERSIONS["bepInExPackVersion"], lock["dependencies"]["denikson-BepInExPack_Valheim"])
 
-    def test_no_rendered_doc_still_shows_the_old_versions(self) -> None:
+    def test_rendered_docs_do_not_embed_mutable_dependency_baselines(self) -> None:
+        _save_cfg(self.output_dir, dict(self.cfg, **STALE_DEPENDENCY_BASELINE))
         cfg = dict(self.cfg, **NEW_DEPENDENCY_VERSIONS)
         _save_cfg(self.output_dir, cfg)
         sync = _run(["scripts/suite_metadata.py", "sync"], self.output_dir)
@@ -183,8 +186,8 @@ class DependencyVersionAuditRegressionTests(unittest.TestCase):
         for doc in RENDERED_DOCS:
             with self.subTest(doc=doc):
                 text = (self.output_dir / doc).read_text(encoding="utf-8")
-                for stale_value in STALE_DEPENDENCY_BASELINE.values():
-                    self.assertNotIn(stale_value, text, f"{doc} still shows stale pin {stale_value}")
+                for value in (*STALE_DEPENDENCY_BASELINE.values(), *DEFAULT_DEPENDENCY_BASELINE.values()):
+                    self.assertNotIn(value, text, f"{doc} embeds mutable dependency pin {value}")
                 self.assertIn("suite.config.json", text)
 
 

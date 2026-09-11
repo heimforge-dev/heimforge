@@ -14,8 +14,8 @@ from dataclasses import dataclass
 from . import naming
 
 DEPENDENCY_BASELINE = {
-    "jotunn_version": "2.29.2",
-    "bepinex_version": "5.4.2333",
+    "jotunn_version": "2.30.0",
+    "bepinex_version": "5.4.2350",
     "netfx_reference_version": "1.0.3",
     "csharp_language_version": "10",
 }

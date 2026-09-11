@@ -58,6 +58,10 @@ workflows fail closed without successful MSBuild evaluation. Generated portable
 preflight still requires dotnet; "portable" skips machine-specific game checks,
 not semantic project validation.
 
+## Generated game-stack maintenance
+
+Every suite renders `scripts/update-game-stack.py` and `scripts/refresh-references.sh`. The Python command owns offline runtime inspection, explicit Jötunn/BepInExPack pin updates, and the pinless `refresh` workflow; it reuses `suite_metadata.py` as the mutable metadata authority and `preflight.py` path parsing rather than duplicating configuration formats. Generated metadata synchronization is transactional across its complete output set. The shell entry point owns only the serialized Jötunn reference refresh: it validates metadata, derives the solution from `suite.identity.lock.json`, and runs prebuild with `-m:1` because Jötunn writes a shared publicized-assembly directory. `scripts/build.sh` remains the normal parallel build path; neither maintenance script owns deployment or lifecycle operations.
+
 ## Generated deployment architecture
 
 The generated project parses development-local schema v1/v2 configuration in `scripts/dev_config.py`. `scripts/deploy.py` owns metadata validation, the transport-independent `DeploymentPlan`, the existing hardened retained-directory-FD deployment, and explicit restart orchestration. `scripts/remote_deploy.py` owns SSH/SCP invocation plus isolated POSIX-shell and Windows-PowerShell staging/promotion implementations. `scripts/server_runtime.py` owns the fixed status/log operations and dispatches them beside the configured local or remote Docker lifecycle without exposing transport logic to the extension.

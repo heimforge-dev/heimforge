@@ -82,17 +82,39 @@ For a portable repository-only check without local Valheim paths:
 ./scripts/preflight.sh --portable
 ```
 
-## First full plugin build
+## Game-stack maintenance
 
-Jötunn relies on publicized game assemblies. `DoPrebuild.props` defaults to `false` deliberately so merely extracting/running portable tests does not mutate the local Valheim development installation.
-
-If `valheim_Data/Managed/publicized_assemblies` is not already present, deliberately enable Jötunn prebuild in `DoPrebuild.props` for the first full plugin build, after confirming `VALHEIM_INSTALL` points at the intended development copy of Valheim.
-
-Then run:
+Use one offline-first command to inspect the configured development stack:
 
 ```bash
-./scripts/build.sh Debug
+python3 scripts/update-game-stack.py check
 ```
+
+It reports Valheim's deterministic local Steam build ID when available, pinned and development-profile Jötunn/BepInExPack versions, pin/runtime drift, and whether Jötunn publicized assemblies are present. It does not query Thunderstore or change files.
+
+Apply only versions chosen explicitly:
+
+```bash
+python3 scripts/update-game-stack.py apply \
+  --jotunn <version> \
+  --bepinex <version>
+```
+
+`apply` synchronizes metadata, refreshes references for an explicit Jötunn update, then runs the ordinary parallel build and preflight. It never installs a runtime package into a profile or remote server, deploys plugins, or restarts a server. For a Valheim binary update without changing pins, run:
+
+```bash
+python3 scripts/update-game-stack.py check
+python3 scripts/update-game-stack.py refresh
+./scripts/check-game-update.sh
+```
+
+`update-game-stack.py` maintains dependency metadata, local runtime inspection, references, and builds. `check-game-update.sh` fingerprints `Assembly-CSharp.dll` and lists Harmony targets requiring semantic revalidation; a successful build does not prove Harmony patches remain valid. Remote/server runtime is never inspected or changed by these commands. Deployment remains explicit:
+
+```bash
+{{DEPLOY_COMMANDS_LIST}}
+```
+
+Add `--restart` only to an explicit server deployment.
 
 ## Deployment
 

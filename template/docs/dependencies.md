@@ -14,6 +14,12 @@
 - Purpose: compatibility enforcement, synchronization, CustomRPCs, commands, events, prefab/game integration, development prebuild support
 - Why needed: establishes the common Valheim modding platform and avoids duplicating networking/synchronization infrastructure
 
+## Game-stack maintenance
+
+Run `python3 scripts/update-game-stack.py check` to compare the authoritative pins with locally discoverable development-profile versions without mutating files or using the network. Use `apply --jotunn <SemVer>` and/or `--bepinex <SemVer>` only with versions selected explicitly; it writes only the requested pins to `suite.config.json` and runs metadata synchronization. Use `python3 scripts/update-game-stack.py refresh` after a Valheim binary update when pins remain unchanged; follow it with `./scripts/check-game-update.sh` for the separate assembly fingerprint and Harmony-target revalidation.
+
+A pin is project metadata, not an installer: changing it does not update an existing Thunderstore profile, a client, or a remote server runtime. Match installed runtime versions separately, deploy explicitly, and complete the multiplayer smoke test after a compatibility update.
+
 ## Microsoft.NETFramework.ReferenceAssemblies
 
 - Pin: `suite.config.json`'s `netFrameworkReferenceAssembliesVersion` (synchronized into `build/Suite.Generated.props`)

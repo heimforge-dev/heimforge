@@ -93,12 +93,12 @@ class JotunnEnvironmentImportTests(unittest.TestCase):
         )
         package_source = self.root / "test-packages"
         package_source.mkdir()
-        with zipfile.ZipFile(package_source / "JotunnLib.2.29.2.nupkg", "w") as package:
+        with zipfile.ZipFile(package_source / "JotunnLib.2.30.0.nupkg", "w") as package:
             package.writestr(
                 "JotunnLib.nuspec",
                 """<?xml version="1.0" encoding="utf-8"?>
 <package><metadata>
-  <id>JotunnLib</id><version>2.29.2</version><authors>Fixture</authors><description>Fixture</description>
+  <id>JotunnLib</id><version>2.30.0</version><authors>Fixture</authors><description>Fixture</description>
 </metadata></package>
 """,
             )

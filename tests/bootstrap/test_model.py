@@ -1,7 +1,9 @@
+import json
 import unittest
+from pathlib import Path
 
 from bootstrap import naming
-from bootstrap.model import ProjectParams, build_model, identity_lock_dict, solution_text, suite_config_dict, token_map, validate_params
+from bootstrap.model import DEPENDENCY_BASELINE, ProjectParams, build_model, identity_lock_dict, solution_text, suite_config_dict, token_map, validate_params
 
 
 def make_params(**overrides) -> ProjectParams:
@@ -223,6 +225,17 @@ class ModelTests(unittest.TestCase):
         lock = identity_lock_dict(model)
         self.assertEqual(cfg["suiteName"], lock["suiteName"])
         self.assertEqual(cfg["rootNamespace"], lock["rootNamespace"])
+
+    def test_bootstrap_manifest_dependency_baseline_matches_model(self):
+        manifest = json.loads(Path("BOOTSTRAP_MANIFEST.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            {
+                "Jotunn": DEPENDENCY_BASELINE["jotunn_version"],
+                "BepInExPack_Valheim": DEPENDENCY_BASELINE["bepinex_version"],
+                "Microsoft.NETFramework.ReferenceAssemblies": DEPENDENCY_BASELINE["netfx_reference_version"],
+            },
+            manifest["dependencyBaseline"],
+        )
 
 
 if __name__ == "__main__":

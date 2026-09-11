@@ -108,14 +108,16 @@ Existing schema-v1 files remain valid. `serverPluginDir` keeps its legacy local-
 
 ## Metadata workflow
 
-Edit `suite.config.json`, then run:
+`suite.config.json` is the authoritative source for dependency pins. Use the game-stack workflow for Valheim, Jötunn, or BepInExPack maintenance instead of editing generated metadata:
 
-```text
-python3 scripts/suite_metadata.py sync
-python3 scripts/suite_metadata.py check
+```bash
+python3 scripts/update-game-stack.py check
+python3 scripts/update-game-stack.py apply \
+  --jotunn <version> \
+  --bepinex <version>
 ```
 
-Generated files must not be edited manually.
+`check` is offline and non-destructive: it reports pins, locally discoverable development-profile versions, drift, and publicized-assembly state. `apply` accepts only explicitly supplied SemVer pins, synchronizes generated metadata, refreshes references for an explicit Jötunn update, runs the normal build and preflight, but never deploys or restarts a server. For a Valheim binary update without changing pins, run `python3 scripts/update-game-stack.py refresh`, then `./scripts/check-game-update.sh`; the former refreshes/builds references, while the latter fingerprints `Assembly-CSharp.dll` and lists Harmony targets for semantic revalidation. A successful build does not prove Harmony patches remain valid. Remote/server runtime is not inspected. Run `scripts/suite_metadata.py sync` directly only for other supported metadata edits.
 
 ## Preflight
 
@@ -135,7 +137,9 @@ Portable repository-only mode:
 
 `DoPrebuild.props` defaults to false. This prevents an incidental bootstrap/test command from generating files inside the configured Valheim install.
 
-For the first full plugin build, if `valheim_Data/Managed/publicized_assemblies` is absent, enable `ExecutePrebuild=true` deliberately after confirming the correct development `VALHEIM_INSTALL` path. Jötunn can then generate and reference the required publicized dependencies.
+`./scripts/refresh-references.sh` is the deliberate reference-refresh operation. It validates metadata and performs Jötunn prebuild with one MSBuild worker because Jötunn writes a shared `publicized_assemblies` output. This serialization applies only to the refresh; ordinary `./scripts/build.sh` builds remain parallel.
+
+Run `python3 scripts/update-game-stack.py apply --jotunn <version>` after an explicit Jötunn pin update. After a Valheim update, run `python3 scripts/update-game-stack.py refresh` and then `./scripts/check-game-update.sh`; the refresh does not change dependency pins, and the checker is the separate game-binary/Harmony revalidation tool.
 
 ## Canonical scripts
 
@@ -143,6 +147,10 @@ For the first full plugin build, if `valheim_Data/Managed/publicized_assemblies`
 ./scripts/preflight.sh
 ./scripts/bootstrap.sh
 ./scripts/build.sh
+./scripts/refresh-references.sh
+python3 scripts/update-game-stack.py check
+python3 scripts/update-game-stack.py refresh
+python3 scripts/update-game-stack.py apply --jotunn <version> [--bepinex <version>]
 ./scripts/test.sh
 ./scripts/deploy-client.sh
 ./scripts/deploy-server.sh
