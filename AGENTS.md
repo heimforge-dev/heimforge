@@ -1,4 +1,4 @@
-# ValheimSuite Bootstrap Instructions
+# HeimForge Instructions
 
 This repository is a generator (bootstrapper), not a Valheim mod project. It produces standalone Valheim mod-suite repositories from `template/`.
 

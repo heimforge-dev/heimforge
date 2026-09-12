@@ -1,1 +1,1 @@
-"""ValheimSuite Bootstrap generator package."""
+"""HeimForge generator package."""

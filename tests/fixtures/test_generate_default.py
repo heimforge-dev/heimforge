@@ -12,7 +12,7 @@ class GenerateDefaultTests(unittest.TestCase):
     def test_bootstrapper_attribution_survives_validation(self):
         _params, output_dir, result = generate_into_temp()
         readme = (output_dir / "README.md").read_text(encoding="utf-8")
-        self.assertIn("ValheimSuite Bootstrap", readme)
+        self.assertIn("HeimForge", readme)
         self.assertTrue(result.ok, result.errors)
 
 
