@@ -24,8 +24,8 @@ class GeneratedCheckoutPathDocsTests(unittest.TestCase):
 
         self.assertIn("~/src/vibeheim", project_md)
         self.assertIn("~/src/vibeheim", development_md)
-        self.assertNotIn("valheim-mod-suite", project_md)
-        self.assertNotIn("valheim-mod-suite", development_md)
+        self.assertNotIn("heimforge", project_md)
+        self.assertNotIn("heimforge", development_md)
 
     def test_dotted_namespace_lowers_the_full_dotted_form_for_the_checkout_path(self):
         """`ROOT_NAMESPACE_LOWER` is a plain `.lower()` of the full dotted
@@ -43,7 +43,7 @@ class GeneratedCheckoutPathDocsTests(unittest.TestCase):
 
         development_md = (output_dir / "docs" / "development.md").read_text(encoding="utf-8")
         self.assertIn("~/src/examplecompany.skogtind", development_md)
-        self.assertNotIn("valheim-mod-suite", development_md)
+        self.assertNotIn("heimforge", development_md)
 
 
 if __name__ == "__main__":
