@@ -133,6 +133,7 @@ def validate_dev_config(path: Path) -> tuple[dict, list[str]]:
 
 
 def main() -> int:
+    bootstrap_validation = os.environ.pop("SUITE_BOOTSTRAP_VALIDATION", None) == "1"
     parser = argparse.ArgumentParser()
     parser.add_argument("--portable", action="store_true", help="Skip machine-specific Valheim/server checks")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
@@ -141,8 +142,11 @@ def main() -> int:
     checks: dict[str, object] = {}
     warnings: list[str] = []
     try:
-        meta = run([sys.executable, "scripts/suite_metadata.py", "check"])
-        checks["metadata"] = meta.stdout.strip()
+        if bootstrap_validation:
+            checks["metadata"] = "already certified by bootstrap validation"
+        else:
+            meta = run([sys.executable, "scripts/suite_metadata.py", "check"])
+            checks["metadata"] = meta.stdout.strip()
 
         cwd = str(ROOT.resolve())
         checks["repoPath"] = cwd

@@ -28,7 +28,15 @@ from .render import ROOT_NAMESPACE_PATH_SENTINEL
 # same "local files incorporated into every generated project" problem
 # the template manifest closes for `template/` itself, just at the
 # staging-execution boundary instead of the render boundary.
-NO_BYTECODE_ENV = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+_BOOTSTRAP_VALIDATION_VARIABLE = "SUITE_BOOTSTRAP_VALIDATION"
+NO_BYTECODE_ENV = {
+    key: value for key, value in os.environ.items() if key != _BOOTSTRAP_VALIDATION_VARIABLE
+}
+NO_BYTECODE_ENV["PYTHONDONTWRITEBYTECODE"] = "1"
+
+# Generated scripts keep their standalone checks by default. This mode is
+# reserved for checks already completed earlier in this validation transaction.
+_BOOTSTRAP_VALIDATION_ENV = {**NO_BYTECODE_ENV, _BOOTSTRAP_VALIDATION_VARIABLE: "1"}
 
 # Bootstrapper-owned implementation identity that must never survive into a
 # generated project's own code, metadata, *or path* (a filename/directory
@@ -173,8 +181,9 @@ def validate_generated(output_dir: Path, params: ProjectParams) -> ValidationRes
     if any(scopes[m] == "serverOnly" for m in client):
         r.errors.append("client package set contains a serverOnly project")
 
+    full_metadata_certification = shutil.which("dotnet") is not None
     metadata_command = ["python3", "scripts/suite_metadata.py", "check"]
-    if shutil.which("dotnet") is None:
+    if not full_metadata_certification:
         metadata_command.append("--structural-only")
         r.skipped.append("dotnet not installed: MSBuild artifact contract NOT certified")
     proc = subprocess.run(
@@ -184,6 +193,7 @@ def validate_generated(output_dir: Path, params: ProjectParams) -> ValidationRes
         text=True,
         capture_output=True,
     )
+    metadata_ok = proc.returncode == 0
     if proc.returncode != 0:
         r.errors.append(f"suite_metadata check failed: {proc.stdout}{proc.stderr}")
 
@@ -194,23 +204,33 @@ def validate_generated(output_dir: Path, params: ProjectParams) -> ValidationRes
         text=True,
         capture_output=True,
     )
+    scaffold_ok = proc.returncode == 0
     if proc.returncode != 0:
         r.errors.append(f"generated scaffold tests failed: {proc.stdout}{proc.stderr}")
 
     if shutil.which("dotnet") is None:
         r.skipped.append("dotnet not installed: skipped scripts/preflight.sh --portable and scripts/test.sh")
     else:
+        nested_env = (
+            _BOOTSTRAP_VALIDATION_ENV
+            if full_metadata_certification and metadata_ok and scaffold_ok
+            else NO_BYTECODE_ENV
+        )
         proc = subprocess.run(
             ["bash", "scripts/preflight.sh", "--portable", "--json"],
             cwd=output_dir,
-            env=NO_BYTECODE_ENV,
+            env=nested_env,
             text=True,
             capture_output=True,
         )
         if proc.returncode != 0:
             r.errors.append(f"portable preflight failed: {proc.stdout}{proc.stderr}")
         proc = subprocess.run(
-            ["bash", "scripts/test.sh"], cwd=output_dir, env=NO_BYTECODE_ENV, text=True, capture_output=True
+            ["bash", "scripts/test.sh"],
+            cwd=output_dir,
+            env=nested_env,
+            text=True,
+            capture_output=True,
         )
         if proc.returncode != 0:
             r.errors.append(f"scripts/test.sh failed: {proc.stdout}{proc.stderr}")
