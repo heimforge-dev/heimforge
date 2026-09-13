@@ -8,7 +8,7 @@ from pathlib import Path
 
 from bootstrap.model import build_model, suite_config_dict
 from bootstrap.validate_generated import NO_BYTECODE_ENV, SUITE_GENERATED_IMPORT_RE, validate_generated
-from tests.fixtures._helpers import generate_into_temp, make_params
+from tests.fixtures._helpers import clone_generated_temp, generate_into_temp, make_params
 
 
 class DuplicatePropsImportTests(unittest.TestCase):
@@ -47,7 +47,7 @@ class DuplicatePropsImportTests(unittest.TestCase):
 class JotunnEnvironmentImportTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        _params, cls.base, result = generate_into_temp()
+        _params, cls.base, result = clone_generated_temp()
         if not result.ok:
             raise AssertionError(result.errors)
 

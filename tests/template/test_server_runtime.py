@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.fixtures._helpers import NO_BYTECODE_ENV, generate_into_temp
+from tests.fixtures._helpers import NO_BYTECODE_ENV, clone_generated_temp
 
 
 _FAKE_DOCKER = r'''#!/usr/bin/env python3
@@ -40,7 +40,7 @@ raise SystemExit(result.returncode)
 class ServerRuntimeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        _params, cls.output_dir, result = generate_into_temp()
+        _params, cls.output_dir, result = clone_generated_temp()
         if not result.ok:
             raise AssertionError(result.errors)
         cls.fake_bin = Path(tempfile.mkdtemp(prefix="valheimsuite-runtime-bin-"))

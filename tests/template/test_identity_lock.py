@@ -9,10 +9,10 @@ pointing at the old value; accepted a non-integer `schemaVersion` (e.g.
 docs/changelog/module-catalog prose still showed the old bootstrap-time
 literal.
 
-Every scenario reproduces one of the original audit configurations or
-exercises the mutable/immutable metadata contract end to end, using fully
-generated temp projects (`generate_into_temp()`) -- never the live
-`template/` tree.
+Most scenarios exercise downstream generated-project behavior using private
+`clone_generated_temp()` fixtures from certified seeds. The bootstrap/generated
+lock parity case keeps real `generate_into_temp()` coverage. No test uses the
+live `template/` tree.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from tests.fixtures._helpers import generate_into_temp, import_scripts_from, run_deploy, write_dev_json, write_fake_artifacts
+from tests.fixtures._helpers import clone_generated_temp, generate_into_temp, import_scripts_from, run_deploy, write_dev_json, write_fake_artifacts
 
 DEFAULT_DEPENDENCY_BASELINE = {"jotunnVersion": "2.30.0", "bepInExPackVersion": "5.4.2350", "netFrameworkReferenceAssembliesVersion": "1.0.3"}
 STALE_DEPENDENCY_BASELINE = {"jotunnVersion": "2.29.2", "bepInExPackVersion": "5.4.2333", "netFrameworkReferenceAssembliesVersion": "1.0.3"}
@@ -67,7 +67,7 @@ class RootNamespaceAuditRegressionTests(unittest.TestCase):
     real."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
 
@@ -153,7 +153,7 @@ class DependencyVersionAuditRegressionTests(unittest.TestCase):
     no longer embedding a literal that can go stale)."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
         for key, value in DEFAULT_DEPENDENCY_BASELINE.items():
@@ -208,7 +208,7 @@ class ImmutableIdentityMatrixTests(unittest.TestCase):
     physically-created project post-generation)."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
         self.metadata, self.pkg = import_scripts_from(self.output_dir / "scripts")
@@ -253,7 +253,7 @@ class ErrorQualityTests(unittest.TestCase):
     actions with different remedies."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
         self.metadata, _pkg = import_scripts_from(self.output_dir / "scripts")
@@ -284,7 +284,7 @@ class IdentityLockFileIntegrityTests(unittest.TestCase):
     because `sync` never writes to it."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
         self.lock_path = self.output_dir / "suite.identity.lock.json"
@@ -341,7 +341,7 @@ class SuiteNameAuditRegressionTests(unittest.TestCase):
     `{{SUITE_NAME}}` labels correctly stay on the original name now."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
 
@@ -383,7 +383,7 @@ class SuiteNameDeploymentOwnershipTests(unittest.TestCase):
     already owns DLLs under the original name."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
         write_dev_json(self.output_dir)
@@ -415,7 +415,7 @@ class IdentityLockStrictSchemaTests(unittest.TestCase):
     misattributed to `suite.config.json`."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.lock_path = self.output_dir / "suite.identity.lock.json"
         self.original = json.loads(self.lock_path.read_text(encoding="utf-8"))
@@ -470,7 +470,7 @@ class ConfigSchemaVersionStrictnessTests(unittest.TestCase):
     JSON integer 1 -- Python's `True == 1` must not let a boolean pass."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
         self.metadata, _pkg = import_scripts_from(self.output_dir / "scripts")
@@ -512,7 +512,7 @@ class SuiteVersionChangelogTests(unittest.TestCase):
     leaves a stale release heading in a package."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
 
@@ -559,7 +559,7 @@ class PluginGuidRootModuleCatalogTests(unittest.TestCase):
     must never retain a bootstrap-time-derived GUID after it changes."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
 

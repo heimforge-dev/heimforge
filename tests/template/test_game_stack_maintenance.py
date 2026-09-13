@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.fixtures._helpers import generate_into_temp
+from tests.fixtures._helpers import clone_generated_temp
 
 
 def load_maintenance(project: Path):
@@ -80,7 +80,7 @@ def write_runtime(project: Path, *, jotunn: str | None = "2.30.0", bepinex: str 
 
 class GameStackMaintenanceTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.params, self.project, result = generate_into_temp()
+        self.params, self.project, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         write_runtime(self.project)
         self.module = load_maintenance(self.project)

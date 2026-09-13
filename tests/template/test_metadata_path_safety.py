@@ -2,10 +2,10 @@
 issue: malformed `suite.config.json` values must never cause filesystem
 writes outside the generated repository or unsafe archive-member paths.
 
-Every test that can complete a real write uses a disposable temp copy of
-`template/` (`copy_template_to_temp()`) or a fully generated temp project
-(`generate_into_temp()`) -- never the live `template/` tree -- so a
-pre-fix reproduction run can never contaminate this repository.
+Tests that can complete writes use disposable temp copies of `template/` or
+private `clone_generated_temp()` fixtures from certified seeds. The
+alternate-identity generation case keeps real `generate_into_temp()` coverage.
+No pre-fix reproduction can contaminate the live `template/` tree.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ import zipfile
 from pathlib import Path
 
 from bootstrap.model import ProjectParams, build_model, suite_config_dict
-from tests.fixtures._helpers import copy_template_to_temp, generate_into_temp
+from tests.fixtures._helpers import clone_generated_temp, copy_template_to_temp, generate_into_temp
 from tests.fixtures._helpers import import_scripts_from as _import_scripts_from
 
 
@@ -423,7 +423,7 @@ class AbsoluteProjectPathTests(unittest.TestCase):
     validation, and `sync()` must never write outside the generated repo."""
 
     def test_absolute_common_module_cannot_escape_repository_on_sync(self):
-        _params, output_dir, result = generate_into_temp()
+        _params, output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
 
         cfg = _load_cfg(output_dir)
@@ -469,7 +469,7 @@ class SuiteNameTraversalTests(unittest.TestCase):
     `artifacts/packages/`."""
 
     def test_sync_rejects_suite_name_traversal_without_writing(self):
-        _params, output_dir, result = generate_into_temp()
+        _params, output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
 
         cfg = _load_cfg(output_dir)
@@ -485,7 +485,7 @@ class SuiteNameTraversalTests(unittest.TestCase):
             self.assertEqual(before, path.read_bytes() if path.is_file() else None, f"{path} changed unexpectedly")
 
     def test_packaging_rejects_suite_name_traversal_independently_of_sync(self):
-        _params, output_dir, result = generate_into_temp()
+        _params, output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
 
         cfg = _load_cfg(output_dir)
@@ -503,7 +503,7 @@ class ValidMetadataRemainsValidTests(unittest.TestCase):
     """Item 9/11: normal generated projects must keep working end to end."""
 
     def test_sync_check_and_package_succeed_for_a_normal_generated_project(self):
-        params, output_dir, result = generate_into_temp()
+        params, output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
 
         check_proc = _run(["scripts/suite_metadata.py", "check"], output_dir)
@@ -537,7 +537,7 @@ class SyncSymlinkSafetyTests(unittest.TestCase):
     """A redirected generated-output path must fail before sync touches it."""
 
     def _generated_project(self) -> Path:
-        _params, output_dir, result = generate_into_temp()
+        _params, output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         return output_dir
 
@@ -626,7 +626,7 @@ class SyncSymlinkSafetyTests(unittest.TestCase):
 
 class PackageWriteBoundaryTests(unittest.TestCase):
     def _generated_project_with_artifacts(self) -> tuple[Path, dict]:
-        _params, output_dir, result = generate_into_temp()
+        _params, output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         cfg = _load_cfg(output_dir)
         for project, item in cfg["projects"].items():
@@ -804,7 +804,7 @@ class BootstrapGrammarAlignmentTests(unittest.TestCase):
 
 class MalformedPackageListTests(unittest.TestCase):
     def test_non_string_package_members_raise_metadata_error(self):
-        _params, output_dir, result = generate_into_temp()
+        _params, output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         metadata, _pkg = _import_scripts_from(output_dir / "scripts")
         cfg = _load_cfg(output_dir)
@@ -830,7 +830,7 @@ class SyncFinalTargetPreflightTests(unittest.TestCase):
             "packaging/profile-lock.json",
         ):
             with self.subTest(relpath=relpath):
-                _params, output_dir, result = generate_into_temp()
+                _params, output_dir, result = clone_generated_temp()
                 self.assertTrue(result.ok, result.errors)
                 cfg = _load_cfg(output_dir)
                 common = cfg["packages"]["commonModule"]
@@ -857,7 +857,7 @@ class SyncFinalTargetPreflightTests(unittest.TestCase):
 
 class PackageFinalTargetPreflightTests(unittest.TestCase):
     def _setup(self) -> tuple[Path, dict, Path]:
-        _params, output_dir, result = generate_into_temp()
+        _params, output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         cfg = _load_cfg(output_dir)
         for project, item in cfg["projects"].items():

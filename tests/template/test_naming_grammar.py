@@ -2,9 +2,9 @@
 issue: SemVer and Thunderstore-namespace grammars, bootstrap/generated
 validator alignment, and the `check --release` gate.
 
-Every test uses a disposable generated project (`generate_into_temp()`)
-or a disposable copy of `template/` -- never the live template -- so a
-pre-fix reproduction run can never contaminate this repository.
+Generator/output tests use real generation. Downstream generated-project checks
+use private `clone_generated_temp()` fixtures from certified seeds. Other tests
+use disposable copies of `template/`; none use the live tree.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from pathlib import Path
 
 from bootstrap import naming
 from bootstrap.create_project import generate
-from tests.fixtures._helpers import copy_template_to_temp, generate_into_temp, import_scripts_from, make_params
+from tests.fixtures._helpers import clone_generated_temp, copy_template_to_temp, generate_into_temp, import_scripts_from, make_params
 
 NAMESPACE_CASES = [
     ("class", False),
@@ -200,7 +200,7 @@ class GeneratedSyncXmlCharacterTests(unittest.TestCase):
     `Suite.Generated.props` over the existing valid one."""
 
     def setUp(self):
-        _params, output_dir, result = generate_into_temp()
+        _params, output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.output_dir = output_dir
         self.metadata, _pkg = import_scripts_from(output_dir / "scripts")
@@ -323,7 +323,7 @@ class SuiteNameLengthAlignmentTests(unittest.TestCase):
         self.assertEqual(naming.MAX_SUITE_NAME_LENGTH, self.metadata.MAX_SUITE_NAME_LENGTH)
 
     def test_generated_validator_accepts_suite_name_at_max_length(self):
-        _params, output_dir, result = generate_into_temp()
+        _params, output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         metadata, _pkg = import_scripts_from(output_dir / "scripts")
         cfg = json.loads((output_dir / "suite.config.json").read_text(encoding="utf-8"))
@@ -331,7 +331,7 @@ class SuiteNameLengthAlignmentTests(unittest.TestCase):
         metadata.validate(cfg, structural_only=True)
 
     def test_generated_validator_rejects_suite_name_over_max_length(self):
-        _params, output_dir, result = generate_into_temp()
+        _params, output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         metadata, _pkg = import_scripts_from(output_dir / "scripts")
         cfg = json.loads((output_dir / "suite.config.json").read_text(encoding="utf-8"))
@@ -346,7 +346,7 @@ class ReleaseGateTests(unittest.TestCase):
     metadata."""
 
     def setUp(self):
-        params, output_dir, result = generate_into_temp(
+        params, output_dir, result = clone_generated_temp(
             suite_name="Vibeheim",
             root_namespace="ExampleCompany.Vibeheim",
             plugin_guid_root="net.example-tests.vibeheim",

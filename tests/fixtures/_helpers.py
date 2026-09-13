@@ -1,12 +1,15 @@
-"""Shared fixture-generation helper for tests/fixtures/*.
+"""Shared fixture-generation helpers for tests.
 
-Every fixture renders into a system temp directory (tempfile.mkdtemp), never
-under this repository, so no bootstrapper .gitignore handling is needed and
-independence from the bootstrapper is proven by construction.
+Real generation/certification and downstream seed clones both live under
+system temp directories, never this repository. Callers receive private
+mutable filesystem trees and private Python objects; cached certified seeds
+remain internal.
 """
 
 from __future__ import annotations
 
+import atexit
+import copy
 import importlib
 import json
 import shutil
@@ -72,6 +75,44 @@ def generate_into_temp(*, template_dir: Path | None = None, **overrides) -> tupl
     output_dir = Path(tempfile.mkdtemp(prefix="valheimsuite-bootstrap-fixture-"))
     result = generate(params, output_dir, template_dir=template_dir)
     return params, output_dir, result
+
+
+_GENERATED_SEEDS: dict[tuple[tuple[str, object], ...], tuple[ProjectParams, Path, ValidationResult]] = {}
+
+
+def _cleanup_generated_seeds() -> None:
+    for _params, seed_dir, _result in _GENERATED_SEEDS.values():
+        shutil.rmtree(seed_dir, ignore_errors=True)
+
+
+atexit.register(_cleanup_generated_seeds)
+
+
+def clone_generated_temp(**overrides) -> tuple[ProjectParams, Path, ValidationResult]:
+    """Return an isolated clone of a fully validated generated project.
+
+    The production generation and validation pipeline runs once per distinct
+    parameter set. Every caller receives a private mutable tree and private
+    copies of the cached parameter and validation objects.
+    """
+    key = tuple(sorted(overrides.items()))
+
+    cached = _GENERATED_SEEDS.get(key)
+    if cached is None:
+        cached = generate_into_temp(**overrides)
+        params, seed_dir, result = cached
+        if not result.ok:
+            return cached
+        _GENERATED_SEEDS[key] = cached
+
+    params, seed_dir, result = cached
+
+    output_dir = Path(
+        tempfile.mkdtemp(prefix="valheimsuite-bootstrap-fixture-clone-")
+    )
+    shutil.copytree(seed_dir, output_dir, dirs_exist_ok=True)
+
+    return copy.deepcopy(params), output_dir, copy.deepcopy(result)
 
 
 def expected_relpaths(
@@ -165,15 +206,16 @@ def import_deploy_from(scripts_dir: Path):
 
 
 class DeployFixtureTestCase(unittest.TestCase):
-    """Base fixture for deploy.py tests: a fully generated temp project with
-    fake build artifacts, ready to deploy into a disposable destination.
-    Subclasses needing a non-default suite identity (e.g. reproducing an
-    issue tied to a specific namespace) set `generate_overrides`."""
+    """Base fixture for deploy.py tests: an isolated clone of a fully generated
+    and validated temp project with fake build artifacts, ready to deploy into
+    a disposable destination. Subclasses needing a non-default suite identity
+    set `generate_overrides`.
+    """
 
     generate_overrides: dict = {}
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp(**self.generate_overrides)
+        self.params, self.output_dir, result = clone_generated_temp(**self.generate_overrides)
         self.assertTrue(result.ok, result.errors)
         self.cfg = json.loads((self.output_dir / "suite.config.json").read_text(encoding="utf-8"))
         write_dev_json(self.output_dir)

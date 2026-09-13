@@ -11,12 +11,12 @@ import uuid
 from pathlib import Path
 from unittest import mock
 
-from tests.fixtures._helpers import generate_into_temp
+from tests.fixtures._helpers import clone_generated_temp
 
 
 class PreflightEnvironmentPathTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.params, self.root, result = generate_into_temp()
+        self.params, self.root, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.preflight = self._load_preflight()
 

@@ -17,7 +17,7 @@ from bootstrap.model import validate_params
 from bootstrap.render import validate_template
 from bootstrap.validate_generated import NO_BYTECODE_ENV
 from tests.fixtures._helpers import (
-    copy_template_to_temp, generate_into_temp, import_deploy_from, import_scripts_from,
+    clone_generated_temp, copy_template_to_temp, import_deploy_from, import_scripts_from,
     make_params, run_deploy, write_dev_json, write_fake_artifacts,
 )
 from tests.template.test_solution_membership import _add_sln_entry, _write_csproj
@@ -26,7 +26,7 @@ from tests.template.test_solution_membership import _add_sln_entry, _write_cspro
 class ReauditContractsTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.params, cls.base, result = generate_into_temp()
+        cls.params, cls.base, result = clone_generated_temp()
         if not result.ok:
             raise AssertionError(result.errors)
 

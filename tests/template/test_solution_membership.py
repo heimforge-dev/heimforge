@@ -6,8 +6,10 @@ Before this fix, a project could be added to `suite.config.json` without
 a matching `.sln` entry (packaged/deployed but never built by
 `dotnet build`), or removed from `suite.config.json` while the solution
 still built it (built but metadata claims it doesn't exist), and
-`sync`/`check` accepted both. Every scenario here uses a fully generated
-temp project (`generate_into_temp()`) -- never the live `template/` tree.
+`sync`/`check` accepted both. Downstream mutation and parser scenarios use
+private `clone_generated_temp()` fixtures from certified seeds. The optional
+module matrix keeps real `generate_into_temp()` coverage. No test uses the live
+`template/` tree.
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ import unittest
 import uuid
 from pathlib import Path
 
-from tests.fixtures._helpers import generate_into_temp, import_scripts_from, write_dev_json, write_fake_artifacts
+from tests.fixtures._helpers import clone_generated_temp, generate_into_temp, import_scripts_from, write_dev_json, write_fake_artifacts
 
 CSHARP_PROJECT_TYPE_GUID = "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}"
 
@@ -117,7 +119,7 @@ class SolutionParserTests(unittest.TestCase):
     reject explicitly."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
         self.metadata, _pkg = import_scripts_from(self.output_dir / "scripts")
@@ -168,7 +170,7 @@ class ProjectAdditionTests(unittest.TestCase):
     must be accepted."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
         self.new_project = f"{self.params.root_namespace}.Extra"
@@ -214,7 +216,7 @@ class ProjectRemovalTests(unittest.TestCase):
     architecture."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
         self.removed = next(p for p, item in self.cfg["projects"].items() if item["scope"] == "sharedOptional")
@@ -258,7 +260,7 @@ class BuildTestDeployMismatchTests(unittest.TestCase):
     `projects` and solution membership disagree."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
         self.new_project = f"{self.params.root_namespace}.Extra"
@@ -322,7 +324,7 @@ class DuplicateSourceEntryValidationTests(unittest.TestCase):
     still rejects them if ever reached some other way."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.metadata, _pkg = import_scripts_from(self.output_dir / "scripts")
 
@@ -355,7 +357,7 @@ class MalformedSolutionEntryRegressionTests(unittest.TestCase):
     solution mismatch of this general shape)."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
         self.target = self.cfg["packages"]["commonModule"]
@@ -440,7 +442,7 @@ class StaleArtifactBypassRegressionTest(unittest.TestCase):
     canonical build."""
 
     def test_redirected_solution_entry_blocks_package_and_deploy_of_the_stale_local_dll(self) -> None:
-        params, output_dir, result = generate_into_temp()
+        params, output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         cfg = _load_cfg(output_dir)
         target = cfg["packages"]["commonModule"]
@@ -491,7 +493,7 @@ class ValidNonSuiteEntryTests(unittest.TestCase):
     C# project universe."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
 
@@ -532,7 +534,7 @@ class MalformedProjectHeaderRegressionTests(unittest.TestCase):
     MALFORMED_HEADER = "Project(This is not a valid solution project header)"
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
         sln_path = _sln_path(self.output_dir, self.cfg)
@@ -606,7 +608,7 @@ class CommonOnlyRuntimeInvariantTests(unittest.TestCase):
     mod suite."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
 

@@ -18,7 +18,12 @@ from unittest import mock
 
 from bootstrap.validate_generated import NO_BYTECODE_ENV
 from tests.fixtures._helpers import (
-    generate_into_temp, import_deploy_from, import_scripts_from, run_deploy, write_dev_json, write_fake_artifacts,
+    clone_generated_temp,
+    import_deploy_from,
+    import_scripts_from,
+    run_deploy,
+    write_dev_json,
+    write_fake_artifacts,
 )
 
 
@@ -26,7 +31,7 @@ from tests.fixtures._helpers import (
 class EffectiveProjectContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        _params, cls.base, result = generate_into_temp()
+        _params, cls.base, result = clone_generated_temp()
         if not result.ok:
             raise AssertionError(result.errors)
 

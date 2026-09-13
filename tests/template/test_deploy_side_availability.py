@@ -12,9 +12,10 @@ This must hold both for the standard bootstrap-generated combinations
 since side availability is derived from current validated package
 membership, not from bootstrap-time module identity.
 
-Every scenario deploys from a fully generated temp project
-(`generate_into_temp()`) into a disposable destination -- never the live
-`template/` tree.
+Standard optional-module combinations use `generate_into_temp()` to exercise
+real generation/certification. Downstream deployment scenarios use private
+`clone_generated_temp()` fixtures from certified seeds. Every destination is
+disposable; the live `template/` tree is never used.
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ import unittest
 import uuid
 from pathlib import Path
 
-from tests.fixtures._helpers import NO_BYTECODE_ENV, generate_into_temp, run_deploy, write_dev_json, write_fake_artifacts
+from tests.fixtures._helpers import NO_BYTECODE_ENV, clone_generated_temp, generate_into_temp, run_deploy, write_dev_json, write_fake_artifacts
 
 CSHARP_PROJECT_TYPE_GUID = "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}"
 
@@ -105,6 +106,15 @@ def _generate_with_artifacts(**overrides) -> Path:
     return output_dir
 
 
+def _clone_with_artifacts(**overrides) -> Path:
+    _params, output_dir, result = clone_generated_temp(**overrides)
+    assert result.ok, result.errors
+    cfg = _load_cfg(output_dir)
+    write_dev_json(output_dir)
+    write_fake_artifacts(output_dir, cfg)
+    return output_dir
+
+
 class StandardCombinationSideAvailabilityTests(unittest.TestCase):
     """Section 3/4/14: the standard bootstrap-generated combinations
     accept/reject exactly the sides `has_server_package`/
@@ -161,7 +171,7 @@ class PreMutationRejectionTests(unittest.TestCase):
     DLL copied -- and an existing destination must come out byte-identical."""
 
     def setUp(self) -> None:
-        self.output_dir = _generate_with_artifacts(include_client=False, include_shared_diagnostics=False)
+        self.output_dir = _clone_with_artifacts(include_client=False, include_shared_diagnostics=False)
         self.cfg = _load_cfg(self.output_dir)
 
     def test_absent_destination_remains_absent(self) -> None:
@@ -205,7 +215,7 @@ class CustomProjectSideAvailabilityTests(unittest.TestCase):
         stays valid) with ServerCore then removed from config/packages/`.sln`,
         leaving a bare base to add exactly one custom project onto -- so the
         only runtime module present is the custom one under test."""
-        output_dir = _generate_with_artifacts(include_client=False, include_shared_diagnostics=False)
+        output_dir = _clone_with_artifacts(include_client=False, include_shared_diagnostics=False)
         cfg = _load_cfg(output_dir)
         common = cfg["packages"]["commonModule"]
         server_core = next(p for p in cfg["projects"] if p != common)

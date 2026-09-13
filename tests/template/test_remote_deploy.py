@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.fixtures._helpers import NO_BYTECODE_ENV, generate_into_temp, import_deploy_from, write_fake_artifacts
+from tests.fixtures._helpers import NO_BYTECODE_ENV, clone_generated_temp, import_deploy_from, write_fake_artifacts
 
 
 _FAKE_SSH = r'''#!/usr/bin/env python3
@@ -100,7 +100,7 @@ print(sys.argv[-1])
 class RemoteDeploymentTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        _, cls.output_dir, result = generate_into_temp()
+        _, cls.output_dir, result = clone_generated_temp()
         if not result.ok:
             raise AssertionError(result.errors)
         cls.cfg = json.loads((cls.output_dir / "suite.config.json").read_text(encoding="utf-8"))

@@ -3,11 +3,11 @@ must delete only entries this suite previously recorded, via its own
 deployment manifest, as its own deployed outputs. A filename sharing the
 suite's namespace prefix must never be treated as owned by that fact alone.
 
-Every test deploys into a disposable temp directory, built from a fully
-generated temp project (`generate_into_temp()`) with fake build artifacts --
-never the live `template/` tree. Symlinked-*destination-DLL* write safety is
-covered in test_deploy_symlink_safety.py; this file covers ownership
-tracking (the deployment manifest) and destination-directory policy.
+Every test deploys into a disposable clone of a fully generated and validated
+temp project with fake build artifacts, never the live `template/` tree.
+Symlinked-*destination-DLL* write safety is covered in
+test_deploy_symlink_safety.py; this file covers ownership tracking
+(the deployment manifest) and destination-directory policy.
 """
 
 from __future__ import annotations

@@ -1,8 +1,8 @@
 """Regression tests for the deployment-write symlink issue: an existing
 destination DLL pathname that is a symlink must never be followed by
-`scripts/deploy.py`. Every test deploys into a disposable temp directory,
-built from a fully generated temp project (`generate_into_temp()`) with
-fake build artifacts -- never the live `template/` tree.
+`scripts/deploy.py`. Every test deploys into a disposable clone of a fully
+generated and validated temp project with fake build artifacts, never the
+live `template/` tree.
 
 Manifest-based stale-ownership coverage lives in test_deploy_manifest.py.
 """

@@ -2,10 +2,10 @@
 runtime module's package/deployment membership could silently drift from,
 or omit, what its declared compatibility scope requires.
 
-Every scenario reproduces one of the original audit configurations or
-exercises the full scope -> membership contract, using disposable temp
-copies of `template/` or fully generated temp projects -- never the live
-`template/` tree.
+Every scenario reproduces one of the original audit configurations or exercises
+the full scope-to-membership contract using disposable temp copies of
+`template/` or private `clone_generated_temp()` fixtures from certified seeds.
+The live `template/` tree is never used.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from tests.fixtures._helpers import copy_template_to_temp, generate_into_temp, import_scripts_from
+from tests.fixtures._helpers import clone_generated_temp, copy_template_to_temp, import_scripts_from
 
 
 def _load_cfg(project_dir: Path) -> dict:
@@ -277,7 +277,7 @@ class OriginalAuditRegressionTests(unittest.TestCase):
     CLI, on a fully generated project."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
 
@@ -319,7 +319,7 @@ class MalformedScopeValueTests(unittest.TestCase):
     never a raw `TypeError` -- and must not touch generated output files."""
 
     def setUp(self) -> None:
-        self.params, self.output_dir, result = generate_into_temp()
+        self.params, self.output_dir, result = clone_generated_temp()
         self.assertTrue(result.ok, result.errors)
         self.cfg = _load_cfg(self.output_dir)
         self.metadata, _pkg = import_scripts_from(self.output_dir / "scripts")
