@@ -2,6 +2,10 @@
 
 ## 0.3.0 - 2026-09-14
 
+### Project metadata
+
+- Added `pyproject.toml` with standard HeimForge project metadata and release versioning.
+
 ### Project identity
 
 - Renamed ValheimSuite Bootstrap to HeimForge across the generator, template, documentation, tests, and project metadata.
