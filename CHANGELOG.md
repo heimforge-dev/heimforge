@@ -1,6 +1,51 @@
 # Changelog
 
-## 0.1.0 - Unreleased
+## 0.3.0 - 2026-09-14
+
+### Project identity
+
+- Renamed ValheimSuite Bootstrap to HeimForge across the generator, template, documentation, tests, and project metadata.
+- Updated checkout-leakage coverage for the HeimForge identity.
+
+### Test performance
+
+- Added certified generated-fixture reuse for tests that are semantically downstream of generation while preserving real generation at generator, security, and output-boundary tests.
+- Removed redundant nested generated-project validation while preserving standalone validation behavior, failure semantics, and .NET availability handling.
+- Reduced the certified warm full-suite runtime from 3097.32 seconds to 807.99 seconds, a 73.9% reduction and approximately 3.83x speedup.
+- Expanded the suite to 560 tests with zero failures, errors, or skips at the certified baseline.
+- Documented the performance audit, retained safety boundaries, and rejected unsafe MSBuild aggregation approaches.
+
+## 0.2.0 - 2026-09-11
+
+### Development environment
+
+- Honored configured development dependency paths consistently.
+- Prevented duplicate Jötunn environment imports.
+- Preserved the executable preflight entry point.
+- Added server runtime configuration and validation coverage.
+
+### Deployment
+
+- Added staged SSH server deployment with isolated upload, verification, promotion, rollback, and optional Docker restart behavior.
+- Added transport-independent deployment planning and remote server runtime operations.
+- Expanded deployment, path-safety, and remote-runtime regression coverage.
+
+### Metadata and maintenance
+
+- Made generated metadata synchronization transactional.
+- Added an offline game-stack reference refresh workflow.
+- Added generated-project maintenance tooling for updating game-stack references without embedding default dependency versions.
+
+### Diagnostics
+
+- Added the generated Jötunn RPC handshake for Shared Diagnostics.
+
+### Documentation and tests
+
+- Clarified test execution guidance.
+- Expanded bootstrap, template, environment-path, metadata, remote deployment, and game-stack maintenance coverage.
+
+## 0.1.0 - 2026-09-11
 
 ### Architecture
 
@@ -24,9 +69,10 @@
 - Replaced placeholder packaging with deterministic local ZIPs and SHA-256 checksums.
 - Added repository scaffold regression tests.
 - Added explicit public-release metadata gate.
-- Certify generated project TargetFramework/AssemblyName through structured, evaluation-only MSBuild property queries in the canonical Debug/Release solution context. The trusted metadata script derives and verifies every solution global; project targets/imports cannot forge an artifact report or ship stale canonical-path artifacts. Preserve explicitly non-certifying structural bootstrap operations without dotnet.
+- Certified generated-project `TargetFramework` and `AssemblyName` through structured, evaluation-only MSBuild property queries in the canonical Debug/Release solution context.
+- Preserved explicitly non-certifying structural bootstrap operations for environments without .NET.
 
 ### Bootstrapper
 
-- Converted the fixed ValheimSuite v3 scaffold into a generic ValheimSuite Bootstrap generator (`bootstrap/` + `template/` + `tests/{bootstrap,template,fixtures}` + `scripts/create-project.sh`/`validate-template.sh`).
+- Converted the fixed ValheimSuite v3 scaffold into a generic generator with `bootstrap/`, `template/`, tests, and project-creation tooling.
 - Generated the standalone Vibeheim project as the first dogfood output.
