@@ -1,0 +1,3 @@
+[submodule ".omp/skills/icm-architect"]
+	path = .omp/skills/icm-architect
+	url = https://github.com/RinDig/icm-architect.git

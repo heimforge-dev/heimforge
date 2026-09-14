@@ -2,6 +2,8 @@
 
 This repository is a generator (bootstrapper), not a Valheim mod project. It produces standalone Valheim mod-suite repositories from `template/`.
 
+When work concerns the structure, behavior, or context of generated projects, start at `template/AGENTS.md` and follow its routing.
+
 ## Structure
 
 - `bootstrap/`: generator code (`model.py`, `naming.py`, `render.py`, `validate_generated.py`, `create_project.py`). Pure Python, stdlib only.

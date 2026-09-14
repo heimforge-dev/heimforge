@@ -5,15 +5,19 @@ You are bootstrapping and validating this repository as a modular Valheim mod su
 Read, in order:
 
 1. `AGENTS.md`
-2. `.context/PROJECT.md`
-3. `.context/ARCHITECTURE.md`
-4. `.context/NETWORKING.md`
-5. `.context/PATCHING.md`
-6. `.context/TESTING.md`
-7. `.context/CURRENT_STATE.md`
-8. `docs/PROJECT_SPEC.md`
-9. `docs/dependencies.md`
-10. `docs/module-catalog.md`
+2. `.context/CONTEXT.md`
+3. `.context/references/project.md`
+4. `.context/references/architecture.md`
+5. `.context/references/networking.md`
+6. `.context/references/patching.md`
+7. `.context/references/testing.md`
+8. `.context/findings/CONTEXT.md`
+9. `.context/findings/valheim-runtime.md`
+10. `.context/state/CONTEXT.md`
+11. `.context/state/current.md`
+12. `docs/PROJECT_SPEC.md`
+13. `docs/dependencies.md`
+14. `docs/module-catalog.md`
 
 Use the project skills under `.omp/skills/` when their domain applies.
 
@@ -40,7 +44,8 @@ Do not redesign the high-confidence foundation during bootstrap:
 6. Verify the pinned Jötunn and BepInExPack versions against current stable releases. Do not silently upgrade. Report newer versions if any and preserve pins unless there is a compatibility reason to change.
 7. Run `./scripts/bootstrap.sh`.
 8. Verify OMP actually discovers `.omp/skills/`, `.omp/prompts/`, and `.omp/extensions/valheim-dev` using the installed OMP version.
-9. Update `.context/CURRENT_STATE.md` with facts proven on this machine.
+9. Record the inspected game version and configured runtime environment in `.context/findings/valheim-runtime.md`; create separate evidence-backed findings for any implementation-dependent claims.
+10. Update `.context/state/current.md` with the resulting verification status.
 
 ## Jötunn first-build handling
 
@@ -104,5 +109,5 @@ At the end of each substantial milestone:
 
 - run available scaffold/unit/build/runtime checks
 - update relevant docs
-- update `.context/CURRENT_STATE.md`
+- update `.context/state/current.md`
 - state separately what is proven, what remains unverified, and what is game-version-sensitive

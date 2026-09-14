@@ -32,6 +32,6 @@ Verify BepInEx, Jötunn, suite plugin load, config generation, world initializat
 
 ## Level 4: multiplayer integration
 
-Exercise the compatibility matrix in `.context/TESTING.md` for changed networking modules.
+Exercise the compatibility matrix in `.context/references/testing.md` for changed networking modules.
 
 Compilation and package generation are never sufficient proof of network correctness.

@@ -48,7 +48,7 @@ class NoStaleModuleReferencesTests(unittest.TestCase):
                 has_client_package = client or shared_diagnostics
 
                 prompt = (output_dir / "BOOTSTRAP_PROMPT.md").read_text(encoding="utf-8")
-                current_state = (output_dir / ".context" / "CURRENT_STATE.md").read_text(encoding="utf-8")
+                current_state = (output_dir / ".context" / "state" / "current.md").read_text(encoding="utf-8")
                 release = (output_dir / "docs" / "release.md").read_text(encoding="utf-8")
                 readme = (output_dir / "README.md").read_text(encoding="utf-8")
                 project_spec = (output_dir / "docs" / "PROJECT_SPEC.md").read_text(encoding="utf-8")

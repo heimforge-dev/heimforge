@@ -9,7 +9,7 @@ Use this workflow for Valheim feature implementation.
 
 ## Before coding
 
-1. Read `.context/PROJECT.md`, `.context/ARCHITECTURE.md`, and `.context/CURRENT_STATE.md`.
+1. Read `.context/CONTEXT.md`, `.context/references/project.md`, `.context/references/architecture.md`, and `.context/state/current.md`.
 2. Classify the feature as `SERVER_ONLY`, `SHARED_OPTIONAL`, `SHARED_REQUIRED`, or `CLIENT_ONLY`.
 3. Record or update the feature document from `docs/features/TEMPLATE.md`.
 4. Consult current Jotunn docs/Context7 first.

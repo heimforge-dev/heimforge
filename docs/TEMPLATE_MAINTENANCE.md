@@ -34,14 +34,14 @@ Every text file under `template/` may use only the tokens below. A token name ma
 | `{{RUNTIME_MODULE_CONSTRAINTS_LIST}}` | `runtime_module_constraints_bullets()` | per-module side-boundary statements, one line per included optional module |
 | `{{BOOTSTRAP_DIAGNOSTICS_MILESTONE}}` | `bootstrap_diagnostics_milestone_section()` | the full "Milestone 2 diagnostics" section, or `""` when Shared.Diagnostics is omitted; sits on its own template line with no adjacent blank lines (see the function's own docstring for why) |
 | `{{BOOTSTRAP_MILESTONES_PROVEN_CLAUSE}}` | `bootstrap_milestones_proven_clause()` | inline clause naming which milestones must be proven before the first real feature |
-| `{{RELEASE_PACKAGE_FAMILIES_LIST}}` | `release_package_family_bullets()` | bullet list mirroring `scripts/package.py`'s `package_definitions()` gating exactly |
+| `{{RELEASE_PACKAGE_FAMILIES_LIST}}` | `release_package_family_bullets()` | bullet list mirroring `template/scripts/suite_metadata.py`'s `package_definitions()`, consumed by `template/scripts/package.py` |
 | `{{SERVER_PACKAGE_FAMILY_LIST}}` | `server_package_family_bullets()` | bullet list of this generation's server-side package families; empty iff `has_server_package` is false |
 | `{{CLIENT_PACKAGE_FAMILY_LIST}}` | `client_package_family_bullets()` | bullet list of this generation's client-side package families; empty iff `has_client_package` is false |
 | `{{PENDING_RUNTIME_PROOF_LIST}}` | `pending_runtime_proof_bullets()` | root `README.md`'s "still requires the user's machine" bullets, Shared Diagnostics line conditional |
 | `{{HARDENING_PENDING_PROOF_LIST}}` | `hardening_pending_proof_bullets()` | `docs/HARDENING_V3.md`'s analogous pending-proof bullets |
 | `{{PROJECT_SPEC_MILESTONE2_BODY}}` | `project_spec_milestone2_body()` | `docs/PROJECT_SPEC.md`'s Milestone 2 body; a "not applicable" sentence when Shared.Diagnostics is omitted, so the heading/numbering never dangles |
-| `{{INITIAL_MILESTONES_LIST}}` | `initial_milestones_bullets()` | `.context/PROJECT.md`'s numbered milestone list, renumbered when Shared.Diagnostics is omitted |
-| `{{CURRENT_STATE_BUILD_STATUS_LINES}}` | `current_state_build_status_lines()` | `.context/CURRENT_STATE.md`'s per-side build-status lines, one per side that actually has a package |
+| `{{INITIAL_MILESTONES_LIST}}` | `initial_milestones_bullets()` | `.context/state/current.md`'s numbered initial-milestones list, renumbered when Shared.Diagnostics is omitted |
+| `{{CURRENT_STATE_BUILD_STATUS_LINES}}` | `current_state_build_status_lines()` | `.context/state/current.md`'s per-side build-status lines, one per side that actually has a package |
 | `{{DEPLOY_TOPOLOGY_LINES}}` | `deploy_topology_lines()` | root `README.md`'s "Canonical development environment" diagram lines for each side that has a package; empty per side otherwise |
 | `{{DEPLOY_COMMANDS_LIST}}` | `deploy_commands_lines()` | root `README.md`'s Deployment section commands, one per side that has a package |
 | `{{DEPLOY_SIDE_NOTES_LIST}}` | `deploy_side_notes_lines()` | root `README.md`'s Deployment section side-membership prose, one line per side that has a package |
@@ -65,7 +65,7 @@ Path token: `__ROOT_NAMESPACE__` — substring-replaced in path segments only (e
 3. Add the module's template directory under `template/src/__ROOT_NAMESPACE__.<Module>/`, register its files under a new key in `bootstrap/template_manifest.py`'s `OPTIONAL_TEMPLATE_FILES`, and add that key to `bootstrap/render.py`'s `OPTIONAL_GROUP_PRESENT`.
 4. Add a CLI flag (`--no-<module>`) and interactive prompt in `bootstrap/create_project.py`.
 5. Update every module-dependent rendering helper in `bootstrap/model.py` that enumerates modules by name (`module_catalog_rows()`, `included_modules_bullets()`, `compatibility_boundaries_bullets()`, `runtime_module_constraints_bullets()`, `release_package_family_bullets()`, etc.) so the new module appears there too -- see "Adding an optional documentation group" below for the general pattern.
-6. Add fixture test coverage for both the included and omitted case (`tests/fixtures/`), including that `scripts/package.py`'s `package_definitions()` does not emit an empty package for the omitted module.
+6. Add fixture test coverage for both the included and omitted case (`tests/fixtures/`), including that `template/scripts/suite_metadata.py`'s `package_definitions()`, as consumed by `template/scripts/package.py`, does not emit an empty package for the omitted module.
 
 ## The empty-runtime invariant
 

@@ -19,7 +19,7 @@ class GeneratedCheckoutPathDocsTests(unittest.TestCase):
         )
         self.assertTrue(result.ok, result.errors)
 
-        project_md = (output_dir / ".context" / "PROJECT.md").read_text(encoding="utf-8")
+        project_md = (output_dir / ".context" / "references" / "project.md").read_text(encoding="utf-8")
         development_md = (output_dir / "docs" / "development.md").read_text(encoding="utf-8")
 
         self.assertIn("~/src/vibeheim", project_md)

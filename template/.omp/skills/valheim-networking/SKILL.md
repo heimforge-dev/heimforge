@@ -49,4 +49,6 @@ For small object-local messages, consider native ZNetView RPCs after verifying o
 
 ## Documentation
 
-Update `.context/NETWORKING.md`, `docs/networking.md`, and `docs/module-catalog.md` when protocol or compatibility changes.
+- Update `docs/networking.md` for concrete RPC or protocol changes.
+- Update `docs/module-catalog.md` for compatibility or module-classification changes.
+- Update `.context/references/networking.md` only when the stable networking constraints or policy change.

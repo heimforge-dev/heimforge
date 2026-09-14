@@ -30,7 +30,13 @@ from tests.fixtures._helpers import clone_generated_temp, generate_into_temp, im
 DEFAULT_DEPENDENCY_BASELINE = {"jotunnVersion": "2.30.0", "bepInExPackVersion": "5.4.2350", "netFrameworkReferenceAssembliesVersion": "1.0.3"}
 STALE_DEPENDENCY_BASELINE = {"jotunnVersion": "2.29.2", "bepInExPackVersion": "5.4.2333", "netFrameworkReferenceAssembliesVersion": "1.0.3"}
 NEW_DEPENDENCY_VERSIONS = {"jotunnVersion": "9.9.9", "bepInExPackVersion": "8.8.8", "netFrameworkReferenceAssembliesVersion": "7.7.7"}
-RENDERED_DOCS = ("README.md", ".context/PROJECT.md", ".context/VALHEIM.md", ".context/CURRENT_STATE.md", "docs/dependencies.md", "docs/development.md")
+RENDERED_DOCS = ("README.md", ".context/references/project.md", ".context/findings/valheim-runtime.md", ".context/state/current.md", "docs/dependencies.md", "docs/development.md")
+DEPENDENCY_AUTHORITY_DOCS = (
+    "README.md",
+    ".context/references/project.md",
+    "docs/dependencies.md",
+    "docs/development.md",
+)
 
 
 def _load_cfg(project_dir: Path) -> dict:
@@ -183,12 +189,17 @@ class DependencyVersionAuditRegressionTests(unittest.TestCase):
         sync = _run(["scripts/suite_metadata.py", "sync"], self.output_dir)
         self.assertEqual(0, sync.returncode, sync.stdout)
 
+        rendered_docs: dict[str, str] = {}
         for doc in RENDERED_DOCS:
-            with self.subTest(doc=doc):
+            with self.subTest(doc=doc, invariant="no frozen dependency pins"):
                 text = (self.output_dir / doc).read_text(encoding="utf-8")
+                rendered_docs[doc] = text
                 for value in (*STALE_DEPENDENCY_BASELINE.values(), *DEFAULT_DEPENDENCY_BASELINE.values()):
                     self.assertNotIn(value, text, f"{doc} embeds mutable dependency pin {value}")
-                self.assertIn("suite.config.json", text)
+
+        for doc in DEPENDENCY_AUTHORITY_DOCS:
+            with self.subTest(doc=doc, invariant="dependency authority"):
+                self.assertIn("suite.config.json", rendered_docs[doc])
 
 
 class ImmutableIdentityMatrixTests(unittest.TestCase):

@@ -15,7 +15,7 @@ Before packaging or deployment:
 4. Use `scripts/deploy.py` through the canonical Bash wrapper or OMP extension. Do not recreate side-classification logic elsewhere.
 5. For release candidates, perform a local plugin load test and disposable dedicated-server smoke test.
 6. Run multiplayer compatibility tests for changed Shared Modules.
-7. Review config generation, patch ledger, persistence/migrations, changelog, and `.context/CURRENT_STATE.md`.
+7. Review config generation, patch ledger, persistence/migrations, changelog, and `.context/state/current.md`.
 8. Generate deterministic packages with `./scripts/package.sh` and retain `SHA256SUMS`.
 
 For public publication additionally require:
