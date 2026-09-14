@@ -128,10 +128,15 @@ class ModelTests(unittest.TestCase):
         self.assertIn("2. First real feature", without_diag)
 
     def test_current_state_build_status_lines_omit_absent_package_side(self):
+        both_sides = token_map(build_model(make_params()))["CURRENT_STATE_BUILD_STATUS_LINES"]
+        self.assertEqual(
+            "- Server build: NOT RUN IN USER ENVIRONMENT\n- Client build: NOT RUN IN USER ENVIRONMENT",
+            both_sides,
+        )
+
         client_only = build_model(make_params(include_server_core=False, include_shared_diagnostics=False))
         lines = token_map(client_only)["CURRENT_STATE_BUILD_STATUS_LINES"]
-        self.assertNotIn("Server build", lines)
-        self.assertIn("Client build", lines)
+        self.assertEqual("- Client build: NOT RUN IN USER ENVIRONMENT", lines)
 
     def test_project_spec_milestone2_body_reflects_diagnostics_presence(self):
         self.assertIn("CustomRPC", token_map(build_model(make_params()))["PROJECT_SPEC_MILESTONE2_BODY"])

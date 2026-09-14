@@ -416,9 +416,9 @@ def initial_milestones_bullets(model: ProjectModel) -> str:
 def current_state_build_status_lines(model: ProjectModel) -> str:
     lines: list[str] = []
     if model.has_server_package:
-        lines.append("Server build: NOT RUN IN USER ENVIRONMENT")
+        lines.append("- Server build: NOT RUN IN USER ENVIRONMENT")
     if model.has_client_package:
-        lines.append("Client build: NOT RUN IN USER ENVIRONMENT")
+        lines.append("- Client build: NOT RUN IN USER ENVIRONMENT")
     return "\n".join(lines)
 
 
