@@ -14,6 +14,7 @@
 - Reduced the certified warm full-suite runtime from 3097.32 seconds to 807.99 seconds, a 73.9% reduction and approximately 3.83x speedup.
 - Expanded the suite to 560 tests with zero failures, errors, or skips at the certified baseline.
 - Documented the performance audit, retained safety boundaries, and rejected unsafe MSBuild aggregation approaches.
+- Added `./scripts/test.sh` as the canonical root test entry point.
 
 ## 0.2.0 - 2026-09-11
 

@@ -36,6 +36,16 @@ Generated projects are built, tested, and packaged from WSL/Linux; the Windows V
 
 No Valheim installation or game files are needed to run the generator itself.
 
+## Test
+
+Run the full HeimForge test suite with:
+
+```bash
+./scripts/test.sh
+```
+
+The script runs the canonical Python `unittest` discovery command from the repository root.
+
 ## Interactive generation
 
 ```bash
