@@ -2,7 +2,7 @@ Note: the module list below reflects the initial scaffold selection made when th
 
 ## Working
 
-- {{SUITE_NAME}} generated from ValheimSuite Bootstrap.
+- {{SUITE_NAME}} generated from HeimForge.
 {{INCLUDED_MODULES_LIST}}
 - `suite.config.json` is the editable source of truth for supported mutable suite/project/package metadata; generation-time suite identity is locked in `suite.identity.lock.json`.
 - Generated MSBuild/C# package metadata is synchronized and validated.
