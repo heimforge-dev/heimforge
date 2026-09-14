@@ -143,7 +143,7 @@ class ModelTests(unittest.TestCase):
         tokens = token_map(without_diag)
         self.assertNotIn("Shared Diagnostics", tokens["PENDING_RUNTIME_PROOF_LIST"])
         self.assertNotIn("Shared Diagnostics", tokens["HARDENING_PENDING_PROOF_LIST"])
-        self.assertIn("Shared Diagnostics", token_map(build_model(make_params()))["PENDING_RUNTIME_PROOF_LIST"])
+        self.assertIn("- Shared Diagnostics RPC runtime proof", token_map(build_model(make_params()))["PENDING_RUNTIME_PROOF_LIST"])
 
     def test_deploy_side_notes_name_exactly_the_modules_that_side_receives(self):
         server_core_and_diagnostics = token_map(

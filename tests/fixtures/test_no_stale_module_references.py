@@ -72,9 +72,11 @@ class NoStaleModuleReferencesTests(unittest.TestCase):
                     self.assertNotIn("Shared Diagnostics proves the CustomRPC", prompt)
                     self.assertNotIn(f"`{ns}.Shared.Diagnostics`", current_state)
                     self.assertNotIn("- one ZIP per Shared Module", release_lines)
-                    self.assertNotIn("Shared Diagnostics RPC implementation/runtime proof", readme)
+                    self.assertNotIn("Shared Diagnostics RPC runtime proof", readme)
                     self.assertIn("Not applicable: Shared.Diagnostics was not generated for this suite.", project_spec)
                 else:
+                    self.assertIn("- Shared Diagnostics RPC runtime proof", readme)
+                    self.assertNotIn("Shared Diagnostics RPC implementation/runtime proof", readme)
                     self.assertIn(
                         "Shared Diagnostics proves CustomRPC request/response, module/version reporting, and "
                         "multiplayer plumbing without changing gameplay state.",

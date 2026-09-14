@@ -376,7 +376,7 @@ def pending_runtime_proof_bullets(model: ProjectModel) -> str:
         "- actual multiplayer compatibility behavior",
     ]
     if model.shared_diagnostics:
-        lines.append("- Shared Diagnostics RPC implementation/runtime proof")
+        lines.append("- Shared Diagnostics RPC runtime proof")
     lines.append("- any implemented feature's game-internal behavior, once a feature is chosen and built")
     return "\n".join(lines)
 
