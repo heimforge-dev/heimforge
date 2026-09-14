@@ -11,6 +11,10 @@
 - Renamed ValheimSuite Bootstrap to HeimForge across the generator, template, documentation, tests, and project metadata.
 - Updated checkout-leakage coverage for the HeimForge identity.
 
+### Valheim tooling
+
+- Resolved and fingerprinted `assembly_valheim.dll` as the current gameplay assembly, with `Assembly-CSharp.dll` fallback for older layouts and durable OMP game-info fields.
+
 ### Test performance
 
 - Added certified generated-fixture reuse for tests that are semantically downstream of generation while preserving real generation at generator, security, and output-boundary tests.

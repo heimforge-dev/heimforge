@@ -36,7 +36,7 @@ Do not redesign the high-confidence foundation during bootstrap:
 2. Run `./scripts/preflight.sh`.
 3. Confirm the repository is in the WSL filesystem rather than `/mnt/c/...` unless intentionally configured otherwise.
 4. Verify `Environment.props` and `.valheim/dev.json` identify the same development Valheim installation.
-5. Inspect the configured development client for `Assembly-CSharp.dll`, BepInEx, and Jötunn.
+5. Inspect the configured development client for its resolved gameplay assembly (`assembly_valheim.dll`, with `Assembly-CSharp.dll` fallback for older layouts), BepInEx, and Jötunn.
 6. Verify the pinned Jötunn and BepInExPack versions against current stable releases. Do not silently upgrade. Report newer versions if any and preserve pins unless there is a compatibility reason to change.
 7. Run `./scripts/bootstrap.sh`.
 8. Verify OMP actually discovers `.omp/skills/`, `.omp/prompts/`, and `.omp/extensions/valheim-dev` using the installed OMP version.

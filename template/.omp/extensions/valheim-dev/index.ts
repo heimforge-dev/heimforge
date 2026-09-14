@@ -5,6 +5,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 const MAX_BUFFER = 16 * 1024 * 1024;
+const GAME_ASSEMBLY_NAMES = ["assembly_valheim.dll", "Assembly-CSharp.dll"] as const;
 
 type BuildConfiguration = "Debug" | "Release";
 
@@ -216,6 +217,16 @@ async function findFileRecursive(root: string, filename: string): Promise<string
   return null;
 }
 
+async function resolveGameAssembly(managed: string): Promise<string> {
+  for (const filename of GAME_ASSEMBLY_NAMES) {
+    const assembly = path.join(managed, filename);
+    if (await fs.stat(assembly).then(stat => stat.isFile(), () => false)) return assembly;
+  }
+  throw new Error(
+    `Valheim gameplay assembly not found in ${managed}; expected ${GAME_ASSEMBLY_NAMES.join(" or ")}`,
+  );
+}
+
 async function sha256(file: string): Promise<string> {
   const data = await fs.readFile(file);
   return createHash("sha256").update(data).digest("hex");
@@ -332,10 +343,9 @@ export default function valheimDev(pi: ExtensionAPI) {
       const suite = await loadSuiteConfig(root);
       const install = path.resolve(cfg.valheimInstall);
       const managed = path.join(install, "valheim_Data", "Managed");
-      const assembly = path.join(managed, "Assembly-CSharp.dll");
+      const assembly = await resolveGameAssembly(managed);
       const bepinEx = path.join(install, "BepInEx", "core", "BepInEx.dll");
       const jotunn = await findFileRecursive(path.join(install, "BepInEx", "plugins"), "Jotunn.dll");
-      const assemblyExists = await fileExists(assembly);
       const checks = {
         suiteName: suite.suiteName,
         suiteVersion: suite.suiteVersion,
@@ -343,8 +353,8 @@ export default function valheimDev(pi: ExtensionAPI) {
         pinnedBepInExPackVersion: suite.bepInExPackVersion,
         developmentOnly: cfg.developmentOnly,
         valheimInstall: install,
-        assemblyCSharp: assemblyExists ? assembly : null,
-        assemblyCSharpSha256: assemblyExists ? await sha256(assembly) : null,
+        gameAssembly: assembly,
+        gameAssemblySha256: await sha256(assembly),
         bepinEx: (await fileExists(bepinEx)) ? bepinEx : null,
         jotunn,
         serverDeployment: cfg.schemaVersion === 1
@@ -383,7 +393,7 @@ export default function valheimDev(pi: ExtensionAPI) {
     description: "Decompile a type from an assembly located under the configured Valheim valheim_Data/Managed directory using ilspycmd. Read-only.",
     approval: "exec",
     parameters: z.object({
-      assembly: z.string().describe("Relative managed-assembly path, for example Assembly-CSharp.dll"),
+      assembly: z.string().describe("Relative managed-assembly path, for example assembly_valheim.dll"),
       type: z.string().describe("Fully qualified type name to decompile"),
       contains: z.string().optional().describe("Optional text to select context around matching lines"),
     }),

@@ -14,6 +14,7 @@
  * single source of truth every generated project's copy is rendered from.
  */
 import { afterEach, describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -88,6 +89,10 @@ if (!gameInfoTool) throw new Error("valheim_game_info was not registered by the 
 // that contract in one place instead of duplicated across every test.
 function invokeInspect(cwd: string, params: { assembly: string; type: string; contains?: string }): Promise<ToolExecuteResult> {
   return inspectTool.execute("call-1", params, undefined, undefined, { cwd });
+}
+
+function invokeGameInfo(cwd: string): Promise<ToolExecuteResult> {
+  return gameInfoTool.execute("call-1", {}, undefined, undefined, { cwd });
 }
 
 // --- fixture plumbing ---
@@ -197,6 +202,43 @@ describe("development config credentials", () => {
   });
 });
 
+describe("valheim_game_info gameplay assembly", () => {
+  test("prefers assembly_valheim.dll and reports durable fields", async () => {
+    const { gameRoot, managed } = createGameFixture();
+    const { projectRoot } = setupProject(gameRoot);
+    const current = path.join(managed, "assembly_valheim.dll");
+    writeFileSync(path.join(managed, "Assembly-CSharp.dll"), "legacy");
+    writeFileSync(current, "current");
+
+    const result = await invokeGameInfo(projectRoot);
+
+    expect(result.details?.gameAssembly).toBe(current);
+    expect(result.details?.gameAssemblySha256).toBe(createHash("sha256").update("current").digest("hex"));
+    expect(result.details).not.toHaveProperty("assemblyCSharp");
+    expect(result.details).not.toHaveProperty("assemblyCSharpSha256");
+  });
+
+  test("falls back to Assembly-CSharp.dll for older layouts", async () => {
+    const { gameRoot, managed } = createGameFixture();
+    const { projectRoot } = setupProject(gameRoot);
+    const legacy = path.join(managed, "Assembly-CSharp.dll");
+    writeFileSync(legacy, "legacy");
+
+    const result = await invokeGameInfo(projectRoot);
+
+    expect(result.details?.gameAssembly).toBe(legacy);
+    expect(result.details?.gameAssemblySha256).toBe(createHash("sha256").update("legacy").digest("hex"));
+  });
+
+  test("reports a clear error when neither known gameplay assembly exists", async () => {
+    const { gameRoot } = createGameFixture();
+    const { projectRoot } = setupProject(gameRoot);
+
+    await expect(invokeGameInfo(projectRoot)).rejects.toThrow(
+      /gameplay assembly not found.*assembly_valheim\.dll or Assembly-CSharp\.dll/,
+    );
+  });
+});
 
 // --- item 1: reproduce the original lexical-containment bypass pattern ---
 

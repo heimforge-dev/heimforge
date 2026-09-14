@@ -108,7 +108,7 @@ python3 scripts/update-game-stack.py refresh
 ./scripts/check-game-update.sh
 ```
 
-`update-game-stack.py` maintains dependency metadata, local runtime inspection, references, and builds. `check-game-update.sh` fingerprints `Assembly-CSharp.dll` and lists Harmony targets requiring semantic revalidation; a successful build does not prove Harmony patches remain valid. Remote/server runtime is never inspected or changed by these commands. Deployment remains explicit:
+`update-game-stack.py` maintains dependency metadata, local runtime inspection, references, and builds. `check-game-update.sh` fingerprints the resolved gameplay assembly (`assembly_valheim.dll`, with `Assembly-CSharp.dll` fallback for older layouts) and lists Harmony targets requiring semantic revalidation; a successful build does not prove Harmony patches remain valid. Remote/server runtime is never inspected or changed by these commands. Deployment remains explicit:
 
 ```bash
 {{DEPLOY_COMMANDS_LIST}}

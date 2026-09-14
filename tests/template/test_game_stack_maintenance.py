@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -43,6 +44,7 @@ def write_runtime(project: Path, *, jotunn: str | None = "2.30.0", bepinex: str 
     bepinex_root = project / "Profile with spaces" / "BepInEx"
     (managed / "publicized_assemblies").mkdir(parents=True, exist_ok=True)
     (managed / "publicized_assemblies" / "assembly_valheim_publicized.dll").write_bytes(b"publicized")
+    (managed / "assembly_valheim.dll").write_bytes(b"gameplay-current")
     (bepinex_root / "plugins" / "Jotunn").mkdir(parents=True, exist_ok=True)
     (bepinex_root / "plugins" / "Jotunn" / "Jotunn.dll").write_bytes(b"jotunn")
     jotunn_manifest = bepinex_root / "plugins" / "Jotunn" / "manifest.json"
@@ -90,6 +92,54 @@ class GameStackMaintenanceTests(unittest.TestCase):
         with mock.patch.object(sys, "argv", ["update-game-stack.py", *args]), contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             result = self.module.main()
         return result, stdout.getvalue(), stderr.getvalue()
+
+    def run_game_update_check(self) -> subprocess.CompletedProcess[str]:
+        install = self.project / "Steam Library" / "steamapps" / "common" / "Valheim"
+        bepinex_root = self.project / "Profile with spaces" / "BepInEx"
+        dev_config = {
+            "schemaVersion": 1,
+            "developmentOnly": True,
+            "valheimInstall": str(install),
+            "clientPluginDir": str(bepinex_root / "plugins" / self.params.root_namespace),
+            "serverPluginDir": str(self.project / "server-plugins"),
+            "dockerComposeFile": None,
+            "serverLogFile": None,
+            "solution": f"{self.params.root_namespace}.sln",
+            "configuration": "Debug",
+        }
+        dev_path = self.project / ".valheim" / "dev.json"
+        dev_path.parent.mkdir(exist_ok=True)
+        dev_path.write_text(json.dumps(dev_config), encoding="utf-8")
+        fake_bin = self.project / "fake-bin"
+        fake_bin.mkdir(exist_ok=True)
+        dotnet = fake_bin / "dotnet"
+        dotnet.write_text("#!/usr/bin/env bash\nprintf '8.0.0\\n'\n", encoding="utf-8")
+        dotnet.chmod(0o755)
+        environment = dict(
+            os.environ,
+            PATH=f"{fake_bin}:{os.environ.get('PATH', '')}",
+            SUITE_BOOTSTRAP_VALIDATION="1",
+        )
+        return subprocess.run(
+            ["bash", "scripts/check-game-update.sh"],
+            cwd=self.project,
+            env=environment,
+            text=True,
+            capture_output=True,
+        )
+
+    def test_game_update_check_prefers_current_gameplay_assembly(self) -> None:
+        managed = self.project / "Steam Library" / "steamapps" / "common" / "Valheim" / "valheim_Data" / "Managed"
+        (managed / "Assembly-CSharp.dll").write_bytes(b"gameplay-legacy")
+
+        result = self.run_game_update_check()
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        selected = managed / "assembly_valheim.dll"
+        self.assertIn(f"Gameplay assembly: {selected}", result.stdout)
+        self.assertIn(hashlib.sha256(b"gameplay-current").hexdigest(), result.stdout)
+        self.assertNotIn(str(managed / "Assembly-CSharp.dll"), result.stdout)
+        self.assertIn("Harmony targets requiring revalidation:", result.stdout)
 
     def test_generated_command_is_present_and_check_is_non_destructive_with_matching_versions(self) -> None:
         command = self.project / "scripts" / "update-game-stack.py"

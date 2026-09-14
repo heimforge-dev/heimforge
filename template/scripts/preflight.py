@@ -17,6 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 ENVIRONMENT_PROPERTIES = frozenset({"VALHEIM_INSTALL", "VALHEIM_MANAGED", "BEPINEX_PATH", "MOD_DEPLOYPATH"})
 PROPERTY_REFERENCE = re.compile(r"\$\(([^()]*)\)")
+GAME_ASSEMBLY_NAMES = ("assembly_valheim.dll", "Assembly-CSharp.dll")
+
 
 class PreflightError(RuntimeError):
     pass
@@ -83,6 +85,15 @@ def find_jotunn(plugin_root: Path) -> Path | None:
         if path.is_file():
             return path
     return None
+
+def resolve_game_assembly(managed: Path) -> Path:
+    for filename in GAME_ASSEMBLY_NAMES:
+        assembly = managed / filename
+        if assembly.is_file():
+            return assembly
+    raise PreflightError(
+        f"Valheim gameplay assembly not found in {managed}; expected {' or '.join(GAME_ASSEMBLY_NAMES)}"
+    )
 
 
 def require_abs_wsl_path(value: object, key: str, *, nullable: bool = False) -> Path | None:
@@ -186,10 +197,10 @@ def main() -> int:
                 raise PreflightError(
                     f"Valheim path mismatch: Environment.props={env_install} but .valheim/dev.json={dev_install}"
                 )
-            assembly = managed / "Assembly-CSharp.dll"
+            assembly = resolve_game_assembly(managed)
             bepinex = bepinex_root / "core" / "BepInEx.dll"
             jotunn = find_jotunn(bepinex_root / "plugins")
-            checks["assemblyCSharp"] = str(assembly)
+            checks["gameAssembly"] = str(assembly)
             checks["bepInEx"] = str(bepinex)
             checks["jotunn"] = str(jotunn)
 
