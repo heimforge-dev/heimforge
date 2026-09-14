@@ -94,6 +94,7 @@ class GameStackMaintenanceTests(unittest.TestCase):
     def test_generated_command_is_present_and_check_is_non_destructive_with_matching_versions(self) -> None:
         command = self.project / "scripts" / "update-game-stack.py"
         self.assertTrue(command.is_file())
+        self.assertTrue(command.stat().st_mode & 0o111)
         self.assertTrue((self.project / "scripts" / "refresh-references.sh").stat().st_mode & 0o111)
         before = {path: path.read_bytes() for path in (self.project / "suite.config.json", self.project / "build" / "Suite.Generated.props")}
         with mock.patch.object(self.module, "run_command") as run:

@@ -111,7 +111,10 @@ OPTIONAL_GROUP_PRESENT = {
 
 
 def _is_executable_template_path(rel: str) -> bool:
-    return rel.endswith(".sh") or rel == "scripts/preflight.py"
+    return rel.endswith(".sh") or rel in {
+        "scripts/preflight.py",
+        "scripts/update-game-stack.py",
+    }
 
 
 def _manifest_files_for(model: ProjectModel) -> frozenset[str]:
