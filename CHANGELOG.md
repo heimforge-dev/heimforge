@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.4.0 - 2026-09-15
+
+### Context architecture
+
+- Replaced the generated flat `.context/*.md` bundle with a routed context architecture separating stable references, mutable project state, and version-sensitive findings.
+- Added explicit context routing, scoped authority, finding ownership/backlinks, schema rules, and reusable finding templates.
+- Tightened generated repository guardrails and task-specific context loading to reduce authority ambiguity and stale-context edits.
+
+### Harness and maintenance
+
+- Added ICM Architect as a pinned HeimForge submodule for context architecture auditing.
+- Added GitHub Actions CI for the canonical test suite, template validation, and repository-cleanliness checks.
+- Updated generated OMP skills, bootstrap guidance, networking/testing documentation, and Valheim inspection workflows for the routed context model.
+- Clarified that `check-game-update.sh` fingerprints the current gameplay assembly and lists Harmony targets requiring manual semantic revalidation; it does not validate patch semantics.
+
+### Validation
+
+- Expanded bootstrap and template regression coverage for the routed context structure, identity constraints, game-stack maintenance, environment paths, and game-internal inspection.
+- Dogfooded the generated context migration in Vibeheim and completed controlled implementation/planning comparisons before the release gate.
+
 ## 0.3.0 - 2026-09-14
 
 ### Project metadata

@@ -117,7 +117,7 @@ python3 scripts/update-game-stack.py apply \
   --bepinex <version>
 ```
 
-`check` is offline and non-destructive: it reports pins, locally discoverable development-profile versions, drift, and publicized-assembly state. `apply` accepts only explicitly supplied SemVer pins, synchronizes generated metadata, refreshes references for an explicit Jötunn update, runs the normal build and preflight, but never deploys or restarts a server. For a Valheim binary update without changing pins, run `python3 scripts/update-game-stack.py refresh`, then `./scripts/check-game-update.sh`; the former refreshes/builds references, while the latter fingerprints the resolved gameplay assembly (`assembly_valheim.dll`, with `Assembly-CSharp.dll` fallback for older layouts) and lists Harmony targets for semantic revalidation. A successful build does not prove Harmony patches remain valid. Remote/server runtime is not inspected. Run `scripts/suite_metadata.py sync` directly only for other supported metadata edits.
+`check` is offline and non-destructive: it reports pins, locally discoverable development-profile versions, drift, and publicized-assembly state. `apply` accepts only explicitly supplied SemVer pins, synchronizes generated metadata, refreshes references for an explicit Jötunn update, runs the normal build and preflight, but never deploys or restarts a server. For a Valheim binary update without changing pins, run `python3 scripts/update-game-stack.py refresh`, then `./scripts/check-game-update.sh`; the former refreshes/builds references, while the latter fingerprints the resolved gameplay assembly (`assembly_valheim.dll`, with `Assembly-CSharp.dll` fallback for older layouts) and lists Harmony targets that require manual semantic revalidation. The checker does not validate patch semantics; inspect the current assembly before treating any Harmony target as revalidated. A successful build or checker run does not prove Harmony patches remain valid. Remote/server runtime is not inspected. Run `scripts/suite_metadata.py sync` directly only for other supported metadata edits.
 
 ## Preflight
 
@@ -139,7 +139,7 @@ Portable repository-only mode:
 
 `./scripts/refresh-references.sh` is the deliberate reference-refresh operation. It validates metadata and performs Jötunn prebuild with one MSBuild worker because Jötunn writes a shared `publicized_assemblies` output. This serialization applies only to the refresh; ordinary `./scripts/build.sh` builds remain parallel.
 
-Run `python3 scripts/update-game-stack.py apply --jotunn <version>` after an explicit Jötunn pin update. After a Valheim update, run `python3 scripts/update-game-stack.py refresh` and then `./scripts/check-game-update.sh`; the refresh does not change dependency pins, and the checker is the separate game-binary/Harmony revalidation tool.
+Run `python3 scripts/update-game-stack.py apply --jotunn <version>` after an explicit Jötunn pin update. After a Valheim update, run `python3 scripts/update-game-stack.py refresh` and then `./scripts/check-game-update.sh`; the refresh does not change dependency pins, and the checker separately fingerprints the resolved game binary and lists Harmony targets that still require semantic revalidation against the current assembly.
 
 ## Canonical scripts
 
