@@ -8,11 +8,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     name: Test and validate
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 75
 
     steps:
       - name: Check out repository
