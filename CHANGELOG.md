@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.2](https://github.com/heimforge-dev/heimforge/compare/v0.4.1...v0.4.2) (2026-09-15)
+
+
+### Bug Fixes
+
+* allow ignored local developer config ([2fb6b6d](https://github.com/heimforge-dev/heimforge/commit/2fb6b6d53dc14eed30434c5b84d28c24caf6f0c3))
+* allow ignored local developer config ([b6ab490](https://github.com/heimforge-dev/heimforge/commit/b6ab490bb233f58e4104fc630af9f18dc32ad4ee))
+
 ## [0.4.1](https://github.com/heimforge-dev/heimforge/compare/v0.4.0...v0.4.1) (2026-09-15)
 
 
