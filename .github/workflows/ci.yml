@@ -2,6 +2,8 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
   workflow_dispatch:
 
@@ -14,7 +16,43 @@ concurrency:
 
 jobs:
   validate:
-    name: Test and validate
+    name: Fast validation
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.10"
+
+      - name: Show Python version
+        run: python3 --version
+
+      - name: Run fast regression tests
+        run: |
+          python3 -m unittest discover -s tests/bootstrap -t . -p 'test_*.py'
+          python3 -m unittest tests.template.test_template_manifest -v
+
+      - name: Validate template
+        run: ./scripts/validate-template.sh
+
+      - name: Check repository cleanliness
+        run: |
+          git diff --check
+          git diff --exit-code
+          test -z "$(git status --porcelain --untracked-files=all)"
+
+  full:
+    name: Full test suite
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 75
 
@@ -40,7 +78,7 @@ jobs:
           python3 --version
           dotnet --version
 
-      - name: Run test suite
+      - name: Run full test suite
         run: ./scripts/test.sh
 
       - name: Validate template
