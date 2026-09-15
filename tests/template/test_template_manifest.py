@@ -7,6 +7,8 @@ copy, never the bootstrapper's own `template/` directory.
 """
 
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,7 +17,8 @@ from unittest import mock
 from bootstrap import render, template_manifest
 from bootstrap.render import validate_template
 from bootstrap.template_manifest import OPTIONAL_TEMPLATE_FILES, REQUIRED_TEMPLATE_FILES, all_template_files, validate_manifest_structure
-from tests.fixtures._helpers import copy_template_to_temp
+from bootstrap.validate_generated import NO_BYTECODE_ENV
+from tests.fixtures._helpers import copy_template_to_temp, generate_into_temp
 
 
 class TemplateManifestCompletenessTests(unittest.TestCase):
@@ -95,6 +98,24 @@ class UnexpectedTemplateFileTests(unittest.TestCase):
         self.assertTrue(
             any(
                 "template must not contain local Valheim/Jotunn developer configuration: Environment.props" in e
+                for e in errors
+            ),
+            errors,
+        )
+
+    def test_local_dev_json_fails_validation(self):
+        template_dir = copy_template_to_temp()
+        local_config = template_dir / ".valheim" / "dev.json"
+        local_config.write_text(
+            '{"valheimPath": "/local/valheim"}\n',
+            encoding="utf-8",
+        )
+
+        errors = validate_template(template_dir)
+
+        self.assertTrue(
+            any(
+                "template must not contain local Valheim/Jotunn developer configuration: .valheim/dev.json" in e
                 for e in errors
             ),
             errors,
@@ -232,6 +253,58 @@ class UnexpectedDirectoryTests(unittest.TestCase):
         errors = validate_template(template_dir)
 
         self.assertTrue(any("empty_rogue_dir" in e for e in errors), errors)
+
+
+@unittest.skipUnless(shutil.which("git"), "git required to verify generated ignore behavior")
+class GeneratedScaffoldLocalConfigTests(unittest.TestCase):
+    def test_ignored_local_configuration_passes_and_tracked_configuration_fails(self):
+        _params, project, result = generate_into_temp()
+        self.addCleanup(shutil.rmtree, project)
+        self.assertTrue(result.ok, result.errors)
+
+        environment_props = project / "Environment.props"
+        environment_props.write_text("<Project />\n", encoding="utf-8")
+        dev_config = project / ".valheim" / "dev.json"
+        dev_config.parent.mkdir(exist_ok=True)
+        dev_config.write_text("{}\n", encoding="utf-8")
+
+        initialized = subprocess.run(
+            ["git", "init", "--quiet"],
+            cwd=project,
+            env=NO_BYTECODE_ENV,
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(0, initialized.returncode, initialized.stdout + initialized.stderr)
+
+        scaffold = [sys.executable, "-m", "unittest", "discover", "-s", "tests/scaffold", "-p", "test_*.py"]
+        ignored = subprocess.run(
+            scaffold,
+            cwd=project,
+            env=NO_BYTECODE_ENV,
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(0, ignored.returncode, ignored.stdout + ignored.stderr)
+
+        tracked = subprocess.run(
+            ["git", "add", "--force", "--", "Environment.props", ".valheim/dev.json"],
+            cwd=project,
+            env=NO_BYTECODE_ENV,
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(0, tracked.returncode, tracked.stdout + tracked.stderr)
+
+        rejected = subprocess.run(
+            scaffold,
+            cwd=project,
+            env=NO_BYTECODE_ENV,
+            text=True,
+            capture_output=True,
+        )
+        self.assertNotEqual(0, rejected.returncode)
+        self.assertIn("must not be tracked", rejected.stdout + rejected.stderr)
 
 
 class ManifestIndependentSanityTests(unittest.TestCase):
