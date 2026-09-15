@@ -55,10 +55,37 @@ class ScaffoldTests(unittest.TestCase):
 
     def test_local_sensitive_configuration_is_ignored(self):
         gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
-        for required in ("Environment.props", ".valheim/dev.json", "artifacts/", "**/bin/", "**/obj/"):
+        local_paths = ("Environment.props", ".valheim/dev.json")
+        for required in (*local_paths, "artifacts/", "**/bin/", "**/obj/"):
             self.assertIn(required, gitignore)
-        self.assertFalse((ROOT / "Environment.props").exists())
-        self.assertFalse((ROOT / ".valheim" / "dev.json").exists())
+
+        repository = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        if repository.returncode != 0:
+            return
+        for relative_path in local_paths:
+            tracked = subprocess.run(
+                ["git", "ls-files", "--error-unmatch", "--", relative_path],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            self.assertNotEqual(0, tracked.returncode, f"{relative_path} must not be tracked")
+
+            ignored = subprocess.run(
+                ["git", "check-ignore", "--quiet", "--", relative_path],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            self.assertEqual(0, ignored.returncode, f"{relative_path} must be ignored: {ignored.stdout}")
 
     def test_generated_constants_are_the_only_suite_constants_source(self):
         common_project = self.cfg["packages"]["commonModule"]
