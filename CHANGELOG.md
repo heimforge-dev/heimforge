@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/heimforge-dev/heimforge/compare/v0.4.0...v0.4.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* bootstrap release please manifest ([5ffe7ab](https://github.com/heimforge-dev/heimforge/commit/5ffe7abc57090384018d508c3ad62e8d28311e30))
+
 ## 0.4.0 - 2026-09-15
 
 ### Context architecture
