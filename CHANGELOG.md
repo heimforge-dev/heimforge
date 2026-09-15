@@ -12,6 +12,7 @@
 
 - Added ICM Architect as a pinned HeimForge submodule for context architecture auditing.
 - Added GitHub Actions CI for the canonical test suite, template validation, and repository-cleanliness checks.
+- Hardened CI portability across WSL and hosted Linux runners, including environment-derived filesystem fixtures, hosted-runner concurrency timing, and .NET 8 SDK selection.
 - Updated generated OMP skills, bootstrap guidance, networking/testing documentation, and Valheim inspection workflows for the routed context model.
 - Clarified that `check-game-update.sh` fingerprints the current gameplay assembly and lists Harmony targets requiring manual semantic revalidation; it does not validate patch semantics.
 

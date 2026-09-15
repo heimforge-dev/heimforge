@@ -820,16 +820,22 @@ class DeploymentLockConcurrencyTests(DeployFixtureTestCase):
         b_release.write_text("1")
 
         proc_a = self._spawn(dest_a, a_acquired, a_release, [self.common])
-        self.addCleanup(proc_a.wait, timeout=10)
+        self.addCleanup(proc_a.wait, timeout=30)
+        self.addCleanup(a_release.write_text, "1")
         self.assertTrue(_poll_until(a_acquired.exists, timeout=10), "A never acquired its lock")
 
         proc_b = self._spawn(dest_b, b_acquired, b_release, [self.common])
-        # a genuinely different destination inode -- must proceed despite A's hold
-        self.assertTrue(_poll_until(b_acquired.exists, timeout=5), "B blocked on an unrelated destination's lock")
-        self.assertEqual(0, proc_b.wait(timeout=10), proc_b.stdout.read())
+        self.addCleanup(proc_b.wait, timeout=30)
+        self.addCleanup(proc_b.terminate)
+        # A genuinely different destination inode must proceed despite A's hold.
+        # Hosted CI can have materially slower process scheduling than the local
+        # WSL development environment, so this budget detects blocking without
+        # treating ordinary runner startup latency as lock contention.
+        self.assertTrue(_poll_until(b_acquired.exists, timeout=15), "B blocked on an unrelated destination's lock")
+        self.assertEqual(0, proc_b.wait(timeout=30), proc_b.stdout.read())
 
         a_release.write_text("1")
-        self.assertEqual(0, proc_a.wait(timeout=10), proc_a.stdout.read())
+        self.assertEqual(0, proc_a.wait(timeout=30), proc_a.stdout.read())
 
 
 class DestinationAliasSerializationTests(DeployFixtureTestCase):

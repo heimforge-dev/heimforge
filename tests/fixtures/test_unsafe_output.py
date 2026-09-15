@@ -50,9 +50,10 @@ class UnsafeOutputTests(unittest.TestCase):
 
     def test_safe_output_dir_rejects_bootstrapper_repository_and_ancestors(self):
         bootstrapper_root = Path(__file__).resolve().parents[2]
-        for bad in (str(bootstrapper_root), "~/src", str(bootstrapper_root.parent)):
-            with self.assertRaises(GenerationError):
-                _safe_output_dir(bad)
+        for bad in (bootstrapper_root, bootstrapper_root.parent):
+            with self.subTest(bad=str(bad)):
+                with self.assertRaises(GenerationError):
+                    _safe_output_dir(str(bad))
 
     def test_safe_output_dir_accepts_sibling_directory(self):
         accepted = _safe_output_dir("~/src/vibeheim")
@@ -86,13 +87,15 @@ class UnsafeOutputTests(unittest.TestCase):
         self.assertTrue((output_dir / "valuable").is_file())
 
     def test_generate_rejects_mount_points_without_deleting_anything(self):
-        mount_targets = ("/mnt/c", "/proc", "/dev", "/sys")
+        candidates = tuple(Path(p) for p in ("/mnt/c", "/proc", "/dev", "/sys"))
+        mount_targets = tuple(p for p in candidates if p.is_mount())
+        self.assertTrue(mount_targets, "expected at least one known filesystem mount point")
+
         with mock.patch("bootstrap.create_project._renameat2_noreplace") as renameat2:
             for target in mount_targets:
-                with self.subTest(target=target):
-                    self.assertTrue(Path(target).is_mount(), f"{target} is not a mount point in this environment")
+                with self.subTest(target=str(target)):
                     with self.assertRaises(GenerationError):
-                        generate(make_params(), Path(target), force=True)
+                        generate(make_params(), target, force=True)
             renameat2.assert_not_called()
 
     def test_safe_output_dir_accepts_directory_beneath_a_mount_point(self):
