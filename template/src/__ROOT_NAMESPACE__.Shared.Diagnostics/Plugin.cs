@@ -35,7 +35,7 @@ public sealed class Plugin : BaseUnityPlugin
             "DebugLogging",
             false,
             "Enable opt-in runtime debug logging for this module.");
-        Diagnostics = new RuntimeDiagnostics(() => debugLogging.Value, Logger.LogDebug);
+        Diagnostics = new RuntimeDiagnostics(() => debugLogging.Value, Logger.LogInfo);
 
         Logger.LogInfo($"{PluginName} {PluginVersion} protocol {ProtocolVersion} loaded.");
         Logger.LogInfo($"Shared.Diagnostics process mode: {(GUIManager.IsHeadless() ? "headless/dedicated" : "graphical")}.");

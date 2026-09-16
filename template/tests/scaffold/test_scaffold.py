@@ -125,7 +125,7 @@ class ScaffoldTests(unittest.TestCase):
                 r'Config\.Bind\(\s*"Development",\s*"DebugLogging",\s*false,',
             )
             self.assertIn(
-                "new RuntimeDiagnostics(() => debugLogging.Value, Logger.LogDebug)",
+                "new RuntimeDiagnostics(() => debugLogging.Value, Logger.LogInfo)",
                 plugin,
             )
             project_file = ET.parse(ROOT / "src" / project / f"{project}.csproj")

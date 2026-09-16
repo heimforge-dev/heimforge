@@ -30,7 +30,7 @@ public sealed class Plugin : BaseUnityPlugin
             "DebugLogging",
             false,
             "Enable opt-in runtime debug logging for this module.");
-        Diagnostics = new RuntimeDiagnostics(() => debugLogging.Value, Logger.LogDebug);
+        Diagnostics = new RuntimeDiagnostics(() => debugLogging.Value, Logger.LogInfo);
 
         Logger.LogInfo($"{PluginName} {PluginVersion} loaded. No client features are active in the scaffold.");
     }
