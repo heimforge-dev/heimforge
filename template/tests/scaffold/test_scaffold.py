@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -102,6 +103,45 @@ class ScaffoldTests(unittest.TestCase):
                 continue
             text = (ROOT / "src" / project / f"{project}.csproj").read_text(encoding="utf-8")
             self.assertIn('PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies"', text)
+
+    def test_runtime_debug_logging_contract(self):
+        root_namespace = self.cfg["rootNamespace"]
+        common = self.cfg["packages"]["commonModule"]
+        common_dir = ROOT / "src" / common
+        self.assertTrue((common_dir / "Diagnostics" / "RuntimeDiagnostics.cs").is_file())
+        self.assertEqual(
+            [],
+            ET.parse(common_dir / f"{common}.csproj").findall(".//PackageReference"),
+        )
+
+        expected_packages = {"JotunnLib", "Microsoft.NETFramework.ReferenceAssemblies"}
+        for suffix in ("ServerCore", "Client", "Shared.Diagnostics"):
+            project = f"{root_namespace}.{suffix}"
+            if project not in self.cfg["projects"]:
+                continue
+            plugin = (ROOT / "src" / project / "Plugin.cs").read_text(encoding="utf-8")
+            self.assertRegex(
+                plugin,
+                r'Config\.Bind\(\s*"Development",\s*"DebugLogging",\s*false,',
+            )
+            self.assertIn(
+                "new RuntimeDiagnostics(() => debugLogging.Value, Logger.LogInfo)",
+                plugin,
+            )
+            project_file = ET.parse(ROOT / "src" / project / f"{project}.csproj")
+            package_references = {
+                item.attrib["Include"]
+                for item in project_file.findall(".//PackageReference")
+            }
+            self.assertEqual(expected_packages, package_references)
+            if suffix in ("ServerCore", "Client"):
+                project_references = {
+                    item.attrib["Include"]
+                    for item in project_file.findall(".//ProjectReference")
+                }
+                self.assertFalse(
+                    any("Shared.Diagnostics" in reference for reference in project_references)
+                )
 
     def test_plugin_compatibility_boundaries_remain_as_designed(self):
         expectations = {

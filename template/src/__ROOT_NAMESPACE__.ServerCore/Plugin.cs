@@ -2,6 +2,7 @@ using BepInEx;
 using Jotunn.Managers;
 using Jotunn.Utils;
 using {{ROOT_NAMESPACE}}.Common;
+using {{ROOT_NAMESPACE}}.Common.Diagnostics;
 using {{ROOT_NAMESPACE}}.Common.Modules;
 
 namespace {{ROOT_NAMESPACE}}.ServerCore;
@@ -21,8 +22,17 @@ public sealed class Plugin : BaseUnityPlugin
         ModuleScope.ServerOnly,
         PluginVersion);
 
+    internal RuntimeDiagnostics Diagnostics { get; private set; } = null!;
+
     private void Awake()
     {
+        var debugLogging = Config.Bind(
+            "Development",
+            "DebugLogging",
+            false,
+            "Enable opt-in runtime debug logging for this module.");
+        Diagnostics = new RuntimeDiagnostics(() => debugLogging.Value, Logger.LogInfo);
+
         Logger.LogInfo($"{PluginName} {PluginVersion} loaded. No gameplay features are active in the scaffold.");
         Logger.LogInfo($"ServerCore process mode: {(GUIManager.IsHeadless() ? "headless/dedicated" : "graphical")}.");
     }

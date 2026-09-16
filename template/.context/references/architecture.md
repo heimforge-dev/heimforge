@@ -67,3 +67,4 @@ Prefer sidecar state for suite metadata. Use namespaced ZDO data only when state
 - Extract pure gameplay algorithms from Unity-facing code where practical so they can be unit tested.
 - Do not use Unity or Valheim APIs from background threads unless the relevant API is explicitly verified thread-safe.
 - BepInEx and Jotunn are the platform. Do not add ServerSync without a demonstrated requirement.
+- Feature-local runtime debug logging uses the dependency-free Common helper and each plugin's own local `[Development] DebugLogging` setting and BepInEx logger. It does not require Shared.Diagnostics, networking, or ServerSync; see `../../docs/development.md`.

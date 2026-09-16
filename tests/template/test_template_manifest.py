@@ -333,8 +333,10 @@ class ManifestIndependentSanityTests(unittest.TestCase):
             "scripts/refresh-references.sh",
             "scripts/update-game-stack.py",
             "tests/scaffold/test_scaffold.py",
+            "src/__ROOT_NAMESPACE__.Common/Diagnostics/RuntimeDiagnostics.cs",
             "src/__ROOT_NAMESPACE__.Common/__ROOT_NAMESPACE__.Common.csproj",
             "tests/__ROOT_NAMESPACE__.Common.Tests/__ROOT_NAMESPACE__.Common.Tests.csproj",
+            "tests/__ROOT_NAMESPACE__.Common.Tests/RuntimeDiagnosticsTests.cs",
         }
     )
     _CURATED_OPTIONAL_PATHS = {
