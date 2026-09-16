@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/heimforge-dev/heimforge/compare/v0.4.2...v0.5.0) (2026-09-16)
+
+
+### Features
+
+* add opt-in runtime debug logging ([#5](https://github.com/heimforge-dev/heimforge/issues/5)) ([c6b60dd](https://github.com/heimforge-dev/heimforge/commit/c6b60dd1b704feda871a380ee6ec8faef74cd2e2))
+
 ## [0.4.2](https://github.com/heimforge-dev/heimforge/compare/v0.4.1...v0.4.2) (2026-09-15)
 
 
