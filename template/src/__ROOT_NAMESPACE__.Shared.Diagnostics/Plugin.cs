@@ -2,6 +2,7 @@ using BepInEx;
 using Jotunn.Managers;
 using Jotunn.Utils;
 using {{ROOT_NAMESPACE}}.Common;
+using {{ROOT_NAMESPACE}}.Common.Diagnostics;
 using {{ROOT_NAMESPACE}}.Common.Modules;
 
 namespace {{ROOT_NAMESPACE}}.Shared.Diagnostics;
@@ -23,10 +24,19 @@ public sealed class Plugin : BaseUnityPlugin
         PluginVersion,
         ProtocolVersion);
 
+    internal RuntimeDiagnostics Diagnostics { get; private set; } = null!;
+
     private DiagnosticRpc? diagnosticRpc;
 
     private void Awake()
     {
+        var debugLogging = Config.Bind(
+            "Development",
+            "DebugLogging",
+            false,
+            "Enable opt-in runtime debug logging for this module.");
+        Diagnostics = new RuntimeDiagnostics(() => debugLogging.Value, Logger.LogDebug);
+
         Logger.LogInfo($"{PluginName} {PluginVersion} protocol {ProtocolVersion} loaded.");
         Logger.LogInfo($"Shared.Diagnostics process mode: {(GUIManager.IsHeadless() ? "headless/dedicated" : "graphical")}.");
 

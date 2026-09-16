@@ -1,6 +1,7 @@
 using BepInEx;
 using Jotunn.Utils;
 using {{ROOT_NAMESPACE}}.Common;
+using {{ROOT_NAMESPACE}}.Common.Diagnostics;
 using {{ROOT_NAMESPACE}}.Common.Modules;
 
 namespace {{ROOT_NAMESPACE}}.Client;
@@ -20,8 +21,17 @@ public sealed class Plugin : BaseUnityPlugin
         ModuleScope.ClientOnly,
         PluginVersion);
 
+    internal RuntimeDiagnostics Diagnostics { get; private set; } = null!;
+
     private void Awake()
     {
+        var debugLogging = Config.Bind(
+            "Development",
+            "DebugLogging",
+            false,
+            "Enable opt-in runtime debug logging for this module.");
+        Diagnostics = new RuntimeDiagnostics(() => debugLogging.Value, Logger.LogDebug);
+
         Logger.LogInfo($"{PluginName} {PluginVersion} loaded. No client features are active in the scaffold.");
     }
 }

@@ -29,6 +29,37 @@ Both files are ignored by Git.
 
 The Valheim install path in both files must agree. `./scripts/preflight.sh` validates this to prevent accidentally inspecting/building against one installation while deploying to another.
 
+## Runtime debug logging
+
+Every generated runtime plugin binds its own BepInEx configuration entry:
+
+```text
+[Development]
+DebugLogging = false
+```
+
+The setting is local to that plugin. Enabling Client diagnostics does not enable ServerCore or Shared.Diagnostics diagnostics, and the value is not synchronized or sent over the network.
+
+Use the plugin's `RuntimeDiagnostics` instance for development-time, feature-local events. It writes through that plugin's existing BepInEx logger with the filterable format `[RuntimeDebug] <event>: <details>`.
+
+```csharp
+diagnostics.Debug("first-person.requested", "enabled=true");
+diagnostics.Debug("first-person.suspended", "reason=DebugFly");
+
+if (diagnostics.Enabled)
+{
+    diagnostics.Debug(
+        "first-person.camera",
+        $"distance={distance} fov={fov} renderedFov={renderedFov} nearClip={nearClip}");
+}
+```
+
+Log meaningful transitions or changed values, not per-frame polling. In hot loops, check `Enabled` before interpolation so disabled diagnostics do not allocate payload strings. Feature implementations own event names, timing, payload values, and the choice of relevant transitions.
+
+Never log credentials, authentication material, secrets, production configuration, world-save contents, or unnecessary player-identifying information.
+
+This primitive is for local feature diagnostics. `Shared.Diagnostics` remains an independent plugin for shared/network diagnostic behavior; Client and ServerCore do not depend on it for logging.
+
 ## Server deployment
 
 Server artifact planning, deployment transport, and lifecycle control are separate concerns:

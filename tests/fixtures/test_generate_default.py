@@ -8,6 +8,18 @@ class GenerateDefaultTests(unittest.TestCase):
         params, output_dir, result = generate_into_temp()
         self.assertTrue(result.ok, result.errors)
         self.assertTrue((output_dir / f"{params.root_namespace}.sln").is_file())
+        diagnostics = (
+            output_dir
+            / "src"
+            / f"{params.root_namespace}.Common"
+            / "Diagnostics"
+            / "RuntimeDiagnostics.cs"
+        )
+        self.assertTrue(diagnostics.is_file())
+        self.assertIn(
+            f"namespace {params.root_namespace}.Common.Diagnostics;",
+            diagnostics.read_text(encoding="utf-8"),
+        )
 
     def test_bootstrapper_attribution_survives_validation(self):
         _params, output_dir, result = generate_into_temp()
