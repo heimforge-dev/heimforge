@@ -16,7 +16,11 @@
 
 ## Game-stack maintenance
 
-Run `python3 scripts/update-game-stack.py check` to compare the authoritative pins with locally discoverable development-profile versions without mutating files or using the network. Use `apply --jotunn <SemVer>` and/or `--bepinex <SemVer>` only with versions selected explicitly; it writes only the requested pins to `suite.config.json` and runs metadata synchronization. Use `python3 scripts/update-game-stack.py refresh` after a Valheim binary update when pins remain unchanged; follow it with `./scripts/check-game-update.sh` for the separate assembly fingerprint and Harmony-target revalidation.
+Run `python3 scripts/update-game-stack.py check` to compare the authoritative pins with locally discoverable development-profile versions without mutating files or using the network.
+
+`apply --jotunn <SemVer>` and/or `--bepinex <SemVer>` changes only the explicitly supplied pin(s) in `suite.config.json` and synchronizes generated metadata; an explicit Jötunn pin change also refreshes Jötunn's publicized references, then `apply` runs the normal build and preflight. If metadata synchronization itself fails, `suite.config.json` is restored; if a later step (reference refresh, build, or preflight) fails after synchronization succeeded, the synchronized pin and metadata changes remain applied. `apply` never installs packages into a Thunderstore profile, client, or server, and never deploys or restarts anything.
+
+Use `python3 scripts/update-game-stack.py refresh` after a Valheim binary or reference update when pins remain unchanged; it refreshes references, builds, and runs preflight without touching pins. Follow it with `./scripts/check-game-update.sh` for the separate assembly fingerprint and Harmony-target revalidation.
 
 A pin is project metadata, not an installer: changing it does not update an existing Thunderstore profile, a client, or a remote server runtime. Match installed runtime versions separately, deploy explicitly, and complete the multiplayer smoke test after a compatibility update.
 

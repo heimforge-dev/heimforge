@@ -1,5 +1,7 @@
 # HeimForge Test Performance Audit
 
+> Historical record from the v0.3 test-performance audit branch: a certified, point-in-time measurement, not a live current-release baseline.
+
 ## Summary
 
 The original test suite spent most of its time regenerating and certifying the same generated project in individual test bodies. Fixture and class setup were not the dominant cost. Two narrow changes removed duplicate work without changing the generator, deployment, filesystem-safety, or MSBuild-evaluation boundaries:
@@ -84,7 +86,7 @@ The candidate was rejected because it changed MSBuild semantics and required fra
 
 Modeled 280–455 second hypothetical suite runtimes based on the rejected aggregator are not certified baselines and must not be used as performance targets.
 
-## Current safe baseline and stopping point
+## Certified audit baseline and stopping point
 
 The safe, certified baseline is the Tranche 2 profile: **560 tests in 807.99 seconds**, with zero failures, errors, or skips. Further optimization should not weaken:
 

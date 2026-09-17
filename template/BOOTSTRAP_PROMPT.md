@@ -47,16 +47,17 @@ Do not redesign the high-confidence foundation during bootstrap:
 9. Record the inspected game version and configured runtime environment in `.context/findings/valheim-runtime.md`; create separate evidence-backed findings for any implementation-dependent claims.
 10. Update `.context/state/current.md` with the resulting verification status.
 
-## Jötunn first-build handling
+## Jötunn reference refresh
 
-`DoPrebuild.props` defaults to `ExecutePrebuild=false` deliberately.
+`DoPrebuild.props` defaults to `ExecutePrebuild=false` deliberately; ordinary `./scripts/build.sh` stays parallel and never regenerates publicized references on its own.
 
-Before enabling it:
+Before refreshing references:
 
-1. Confirm `VALHEIM_INSTALL` points at the intended development Valheim installation.
+1. Confirm `VALHEIM_INSTALL` points at the intended development Valheim installation (`Environment.props` and `.valheim/dev.json` must agree).
 2. Check whether `valheim_Data/Managed/publicized_assemblies` already exists and is current.
-3. If references are missing, enable Jötunn prebuild deliberately and perform the first full plugin build.
-4. Do not commit generated/publicized game assemblies.
+3. If references are missing or stale, run `python3 scripts/update-game-stack.py refresh` (the normal pinless workflow after a Valheim binary/reference update) or the lower-level `./scripts/refresh-references.sh [Debug|Release]`, which performs Jötunn prebuild in serialized mode (`-m:1`) because the publicized-assembly output is shared.
+4. Do not hand-edit `ExecutePrebuild` in `DoPrebuild.props`; use the refresh commands above instead.
+5. Do not commit generated/publicized game assemblies.
 
 Do not guess around a failed plugin build. Read the Jötunn build output and inspect the local generated-reference state.
 

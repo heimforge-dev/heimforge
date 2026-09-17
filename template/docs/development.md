@@ -9,7 +9,7 @@ Avoid putting the repository under `/mnt/c/...`. Windows remains the actual Valh
 ## Local requirements
 
 - WSL2 with a current Linux distribution
-- Python 3
+- Python 3.10 or newer
 - .NET SDK
 - local Windows Valheim installation for full plugin builds
 - pinned BepInExPack installed in the development Valheim installation
