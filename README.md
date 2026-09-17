@@ -11,6 +11,7 @@ Each generated project is a complete, independent repository with:
 - WSL-first build/test/deploy/package tooling driven by a single authoritative `suite.config.json`.
 - Metadata-driven client/server deployment and deterministic local packaging with SHA-256 checksums.
 - Project-local OMP resources: domain skills (`valheim-modding`, `valheim-networking`, `harmony-reverse-engineering`, `valheim-release`), a `valheim-dev` extension, and a bootstrap prompt.
+- A routed `.context/` task bundle (stable references, mutable state, version-sensitive findings) so agents load only what a task needs.
 
 The generated project imports nothing from this repository and can be moved, renamed, or open-sourced independently.
 
@@ -31,7 +32,7 @@ Generated projects are built, tested, and packaged from WSL/Linux; the Windows V
 
 ## Requirements
 
-- WSL2 (or native Linux) with `bash`, `git`, `python3`.
+- WSL2 (or native Linux) with `bash`, `git`, and Python 3.10 or newer.
 - .NET SDK (for the generated project's own build/test; not required merely to generate a project).
 
 No Valheim installation or game files are needed to run the generator itself.
@@ -84,3 +85,4 @@ Generic improvements discovered while developing Vibeheim should be upstreamed t
 
 - `docs/GENERATOR_ARCHITECTURE.md`: how `bootstrap/` renders and validates a project.
 - `docs/TEMPLATE_MAINTENANCE.md`: the token vocabulary and how to extend `template/`.
+- `docs/TEST_PERFORMANCE_AUDIT.md`: certified test-suite performance audit and the safety boundaries it preserves.

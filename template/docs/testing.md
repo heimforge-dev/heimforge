@@ -24,7 +24,7 @@ The script runs scaffold invariants first, then the C# unit tests.
 
 Build against the legitimate local Valheim/Jötunn development environment from WSL.
 
-A first build may require Jötunn prebuild if publicized game references do not exist yet.
+If publicized Jötunn references do not exist yet, run `python3 scripts/update-game-stack.py refresh` (or the lower-level `./scripts/refresh-references.sh`) before this build; see `docs/development.md` for the reference-refresh workflow.
 
 ## Level 3: disposable dedicated-server smoke test
 

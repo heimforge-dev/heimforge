@@ -30,8 +30,8 @@ The module list below is the initial scaffold snapshot. For current project memb
 1. Configure `Environment.props` and `.valheim/dev.json`.
 2. Run `./scripts/preflight.sh`.
 3. Run `./scripts/bootstrap.sh`.
-4. If publicized assemblies are absent, deliberately enable Jotunn prebuild for the development Valheim install.
-5. Run `./scripts/build.sh Debug`.
+4. If publicized Valheim references are absent, run `python3 scripts/update-game-stack.py refresh` after verifying `VALHEIM_INSTALL`; this refreshes references, builds, and runs preflight.
+5. Otherwise run `./scripts/build.sh Debug` for an ordinary parallel build.
 6. Load OMP and verify the `valheim-dev` extension and tools.
 7. Design and implement the first real feature using `docs/features/TEMPLATE.md`.
 

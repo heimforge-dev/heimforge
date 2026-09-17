@@ -217,7 +217,8 @@ def main() -> int:
             if not publicized_main.is_file() and not execute_prebuild:
                 warnings.append(
                     "publicized Valheim assemblies were not detected and Jotunn ExecutePrebuild=false; "
-                    "the first full plugin build may fail until you deliberately enable Jotunn prebuild or generate references manually"
+                    "after verifying VALHEIM_INSTALL, run python3 scripts/update-game-stack.py refresh "
+                    "(or ./scripts/refresh-references.sh) before the first full plugin build"
                 )
 
             development = parse_development_config(dev)

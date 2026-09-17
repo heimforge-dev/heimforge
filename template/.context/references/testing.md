@@ -34,7 +34,7 @@ Compilation and package generation are not proof of multiplayer correctness.
 
 - Never use the production world as the default integration or release-verification target.
 - Back up persistent state before migration testing.
-- Jotunn prebuild may modify files under the configured development Valheim installation. Enable it only after confirming `VALHEIM_INSTALL` points at the intended development install.
+- Reference refresh (`./scripts/refresh-references.sh` or `python3 scripts/update-game-stack.py refresh`) writes generated/publicized references into the configured development Valheim installation. Run it only after confirming `VALHEIM_INSTALL` points at the intended development install.
 
 ## Canonical commands
 
@@ -44,11 +44,13 @@ Compilation and package generation are not proof of multiplayer correctness.
 - Scaffold tests: `python3 -m unittest discover -s tests/scaffold -p 'test_*.py' -v`
 - Portable plus C# tests: `./scripts/test.sh`
 - Full build: `./scripts/build.sh Debug`
+- Reference refresh: `./scripts/refresh-references.sh Debug`
+- Game-stack pinless refresh: `python3 scripts/update-game-stack.py refresh`
 - Client deployment: `./scripts/deploy-client.sh Debug`
 - Server deployment: `./scripts/deploy-server.sh Debug`
 - Release packaging: `./scripts/package.sh`
 - Public release metadata gate: `python3 scripts/suite_metadata.py check --release`
 
-Before release or deployment changes, run the scaffold tests in addition to C# tests. Full plugin compilation requires local Valheim/Jotunn development references; if publicized references are absent, deliberately enable Jotunn prebuild only after verifying `VALHEIM_INSTALL`.
+Before release or deployment changes, run the scaffold tests in addition to C# tests. Full plugin compilation requires local Valheim/Jotunn development references; if publicized references are absent or stale, run `python3 scripts/update-game-stack.py refresh` (or the lower-level `./scripts/refresh-references.sh`) after verifying `VALHEIM_INSTALL`.
 
 Detailed test and release procedures live in `docs/testing.md` and `docs/release.md`.
