@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0](https://github.com/heimforge-dev/heimforge/compare/v0.5.0...v0.6.0) (2026-09-26)
+
+
+### Features
+
+* add dependency baseline updater ([1335b48](https://github.com/heimforge-dev/heimforge/commit/1335b48df625ec9ccaa5114156ca2e7951aaf049))
+
+
+### Documentation
+
+* align HeimForge guidance with current workflows ([#7](https://github.com/heimforge-dev/heimforge/issues/7)) ([ae53d41](https://github.com/heimforge-dev/heimforge/commit/ae53d411a2a66a2b1b669aa01347e1c4e02e9417))
+
 ## [0.5.0](https://github.com/heimforge-dev/heimforge/compare/v0.4.2...v0.5.0) (2026-09-16)
 
 
