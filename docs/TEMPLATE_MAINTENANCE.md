@@ -16,6 +16,25 @@ A manifest-approved path is also re-verified at the moment of reading: `render_t
 
 `scripts/update-game-stack.py` and `scripts/refresh-references.sh` are required generated workflow entry points. Keep their ownership narrow: the Python command may reuse generated `preflight.py` and `suite_metadata.py` helpers for local inspection and mutable pins, while the shell command is the sole serialized Jötunn reference-refresh path. `suite_metadata.py sync` owns the complete generated-output set and promotes it transactionally. Register both in the manifest and preserve the ordinary parallel `scripts/build.sh` behavior.
 
+## Updating the default dependency baseline
+
+Use the root maintenance command when HeimForge's defaults should move to newer Jötunn and/or BepInExPack Valheim versions:
+
+```bash
+./scripts/update-dependency-baseline.sh --jotunn <version> --bepinex <version>
+```
+
+Either version flag may be omitted when only one default changes. The command validates SemVer syntax, refuses to mutate an already-inconsistent baseline, and keeps `bootstrap/model.py` and `BOOTSTRAP_MANIFEST.json` synchronized. Those two files are the only checked-in authorities for the current default Jötunn/BepInEx baseline; tests and generated fixtures must derive current defaults rather than copy their literal versions.
+
+This command changes bootstrap defaults only. It does not modify an existing generated project, install runtime packages, refresh publicized assemblies, build, deploy, restart Valheim, or alter any separate project such as Vibeheim. Generated projects continue to use their own `scripts/update-game-stack.py` workflow.
+
+After changing the baseline, run the focused bootstrap/update tests and template validation before committing:
+
+```bash
+python3 -m unittest tests.bootstrap.test_model tests.bootstrap.test_update_dependency_baseline
+./scripts/validate-template.sh
+```
+
 ## Token vocabulary
 
 Every text file under `template/` may use only the tokens below. A token name matches `bootstrap/render.py`'s `TOKEN_RE` (`[A-Z_][A-Z0-9_]*`: first character alphabetic/underscore, remaining characters may also be digits, e.g. `PROJECT_SPEC_MILESTONE2_BODY`) -- the renderer's own token *grammar*, backing discovery, substitution, and `validate_template()`'s known-token check against a template *source* file. `bootstrap/render.py`'s `validate_template()` (backing `scripts/validate-template.sh`) fails the build if an unknown `{{TOKEN}}` appears anywhere in `template/`. `validate_generated.py`'s final-output check is a different concern entirely, with a policy split between paths and content: a generated *path* has no legitimate brace syntax at all, so any raw `{{`/`}}` in a relative path fails outright; generated *text* can legitimately contain a doubled brace (`template/scripts/suite_metadata.py`'s f-string escape for literal C# braces is the one such case in the whole generated tree), so content is checked for a marker-*shaped* `{{...}}` instead -- `UNRESOLVED_MARKER_RE` for an ordinary balanced marker, `MALFORMED_MARKER_RE` for one mangled by a single stray interior brace (e.g. `{{BAD}1}}`, `{{BAD{1}}}`) -- either broader than `TOKEN_RE` on purpose, since a generated project has no legitimate reason to retain template delimiters in any marker-like shape, not merely ones that happen to be legal token syntax.
