@@ -10,7 +10,7 @@ Current generated package families:
 
 {{RELEASE_PACKAGE_FAMILIES_LIST}}
 
-The ZIP layout installs DLLs under `BepInEx/plugins/<SuiteName>/` and includes `package-info.json`, README, and changelog.
+The ZIP layout installs DLLs under `BepInEx/plugins/<SuiteName>/` and includes `package-info.json`, README, and changelog. If the project has selected a root `LICENSE`, each ZIP includes that file verbatim.
 
 ## Evaluated artifact contract
 
@@ -61,7 +61,9 @@ Before preparing a public Thunderstore release:
 python3 scripts/suite_metadata.py check --release
 ```
 
-This must fail while placeholder branding remains.
+This must fail while placeholder branding remains, while `LICENSE.todo`
+still exists, or when the root `LICENSE` is missing, empty, non-UTF-8, or not
+a regular file.
 
 Public publication additionally requires final:
 

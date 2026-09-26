@@ -53,6 +53,7 @@ REQUIRED_TEMPLATE_FILES: frozenset[str] = frozenset(
         "DoPrebuild.props",
         "Environment.props.example",
         "LICENSE.todo",
+        "LICENSES/MIT-0.txt",
         "README.md",
         "docs/HARDENING_V3.md",
         "docs/PROJECT_SPEC.md",

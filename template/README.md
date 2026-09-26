@@ -130,6 +130,24 @@ Server deployment does not restart by default. Use `./scripts/deploy-server.sh D
 
 No glob-based side classification is used.
 
+## Licensing
+
+HeimForge does not choose a project-level license for this generated
+repository. `LICENSE.todo` remains as a release reminder, while
+`LICENSES/MIT-0.txt` covers only the HeimForge scaffold material copied into
+the repository.
+
+Your own application and gameplay code may use the project license you choose,
+subject to the terms of third-party dependencies or other incorporated
+material. Before public distribution, add the chosen project license as the
+root `LICENSE` and remove `LICENSE.todo`.
+
+`python3 scripts/suite_metadata.py check --release` enforces that the root
+`LICENSE` is a non-empty regular UTF-8 text file and that `LICENSE.todo` has
+been removed. Local/test packaging remains available before that public-release
+gate is satisfied. When a root `LICENSE` exists, generated package ZIPs include
+it verbatim.
+
 ## Packaging
 
 `package.sh` is no longer a placeholder. It performs a Release build and creates deterministic local distribution ZIPs plus SHA-256 checksums under `artifacts/packages/`:

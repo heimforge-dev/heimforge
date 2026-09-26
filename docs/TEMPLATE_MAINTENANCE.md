@@ -14,6 +14,19 @@ A manifest-approved path is also re-verified at the moment of reading: `render_t
 2. Add its `template/`-relative path to `bootstrap/template_manifest.py`'s `REQUIRED_TEMPLATE_FILES` (or the relevant `OPTIONAL_TEMPLATE_FILES[module]` set if it belongs to an optional module).
 3. Run `scripts/validate-template.sh`.
 
+## Licensing boundary
+
+Original HeimForge-authored files under `template/` are distributed under
+MIT-0 because they are copied into generated repositories. Keep
+`template/LICENSES/MIT-0.txt` in the required template manifest and do not add
+a root `template/LICENSE`: a generated project's root license is deliberately
+left for that project's author to choose.
+
+Generated repositories therefore retain `LICENSE.todo` until a project license
+is selected. New template material must preserve this boundary. Do not copy
+third-party material into the template without preserving and documenting its
+own applicable license terms.
+
 `scripts/update-game-stack.py` and `scripts/refresh-references.sh` are required generated workflow entry points. Keep their ownership narrow: the Python command may reuse generated `preflight.py` and `suite_metadata.py` helpers for local inspection and mutable pins, while the shell command is the sole serialized Jötunn reference-refresh path. `suite_metadata.py sync` owns the complete generated-output set and promotes it transactionally. Register both in the manifest and preserve the ordinary parallel `scripts/build.sh` behavior.
 
 ## Updating the default dependency baseline

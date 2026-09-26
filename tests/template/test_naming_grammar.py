@@ -355,6 +355,13 @@ class ReleaseGateTests(unittest.TestCase):
             suite_version="1.2.3-alpha+build.1",
         )
         self.assertTrue(result.ok, result.errors)
+
+        (output_dir / "LICENSE").write_text(
+            "Test project license\n",
+            encoding="utf-8",
+        )
+        (output_dir / "LICENSE.todo").unlink()
+
         self.output_dir = output_dir
 
     def test_valid_representative_metadata_passes_release_check(self):

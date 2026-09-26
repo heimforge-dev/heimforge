@@ -15,6 +15,22 @@ Each generated project is a complete, independent repository with:
 
 The generated project imports nothing from this repository and can be moved, renamed, or open-sourced independently.
 
+## Licensing
+
+Unless otherwise noted, HeimForge source and documentation outside `template/`
+are licensed under the Apache License 2.0. See `LICENSE`.
+
+Files under `template/` are licensed under MIT-0 because they are intended to
+be copied into independently owned generated repositories. See
+`template/LICENSES/MIT-0.txt`.
+
+A generated project does not automatically adopt MIT-0 as its project license.
+It starts with `LICENSE.todo` plus `LICENSES/MIT-0.txt`; the latter covers only
+the HeimForge scaffold material copied into that repository. Before public
+distribution, choose the generated project's own license, add it as the root
+`LICENSE`, remove `LICENSE.todo`, and retain any notices or terms required by
+third-party material.
+
 ## Supported topology
 
 Every module declares one compatibility category:

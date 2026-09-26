@@ -6,6 +6,7 @@
     "AGENTS.md",
     "BOOTSTRAP_MANIFEST.json",
     "CHANGELOG.md",
+    "LICENSE",
     "README.md",
     "bootstrap/",
     "docs/GENERATOR_ARCHITECTURE.md",
@@ -42,7 +43,8 @@
     "OMP server logs no longer run arbitrary configured commands",
     "deterministic local Release packages and SHA256SUMS are implemented",
     "scaffold regression tests protect established architecture",
-    "generic bootstrap/template/tests separation replaces the single-instance scaffold"
+    "generic bootstrap/template/tests separation replaces the single-instance scaffold",
+    "generated public-release metadata requires a selected root license and removal of LICENSE.todo"
   ],
   "runtimeVerificationStillRequired": [
     "full plugin build in a generated project's WSL/Valheim environment",
