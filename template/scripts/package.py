@@ -149,7 +149,7 @@ def _plan_package(name: str, version: str, modules: list[str], cfg: dict, packag
         arcname = _require_arcname_under(f"{plugin_root}/{dll.name}", plugin_root)
         _plan_member(members, arcname, dll.read_bytes(), seen)
     _plan_member(members, "package-info.json", (json.dumps(package_info, indent=2) + "\n").encode(), seen)
-    for doc in ("README.md", "CHANGELOG.md"):
+    for doc in ("README.md", "CHANGELOG.md", "LICENSE"):
         source = ROOT / doc
         if source.exists():
             _plan_member(members, doc, source.read_bytes(), seen)

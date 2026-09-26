@@ -320,6 +320,8 @@ class ManifestIndependentSanityTests(unittest.TestCase):
             "AGENTS.md",
             "README.md",
             "CHANGELOG.md",
+            "LICENSE.todo",
+            "LICENSES/MIT-0.txt",
             ".gitignore",
             ".editorconfig",
             "Directory.Build.props",

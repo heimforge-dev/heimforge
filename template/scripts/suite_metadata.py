@@ -540,8 +540,33 @@ def validate(cfg: dict, release: bool = False, *, structural_only: bool = False)
             bad.append("thunderstoreNamespace")
         if guid_root.startswith("com.example."):
             bad.append("pluginGuidRoot")
+
+        license_path = ROOT / "LICENSE"
+        try:
+            license_info = license_path.lstat()
+        except FileNotFoundError:
+            bad.append("LICENSE")
+        else:
+            if not stat.S_ISREG(license_info.st_mode):
+                bad.append("LICENSE")
+            else:
+                try:
+                    if not license_path.read_text(encoding="utf-8").strip():
+                        bad.append("LICENSE")
+                except (OSError, UnicodeError):
+                    bad.append("LICENSE")
+
+        try:
+            (ROOT / "LICENSE.todo").lstat()
+        except FileNotFoundError:
+            pass
+        else:
+            bad.append("LICENSE.todo")
+
         if bad:
-            raise MetadataError("Public-release metadata is incomplete: " + ", ".join(bad))
+            raise MetadataError(
+                "Public-release metadata is incomplete: " + ", ".join(bad)
+            )
 
     if not structural_only:
         validate_effective_projects(cfg)
