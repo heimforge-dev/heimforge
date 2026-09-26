@@ -25,9 +25,14 @@ import unittest
 import zipfile
 from pathlib import Path
 
+from bootstrap.model import DEPENDENCY_BASELINE
 from tests.fixtures._helpers import clone_generated_temp, generate_into_temp, import_scripts_from, run_deploy, write_dev_json, write_fake_artifacts
 
-DEFAULT_DEPENDENCY_BASELINE = {"jotunnVersion": "2.30.2", "bepInExPackVersion": "5.4.2351", "netFrameworkReferenceAssembliesVersion": "1.0.3"}
+DEFAULT_DEPENDENCY_BASELINE = {
+    "jotunnVersion": DEPENDENCY_BASELINE["jotunn_version"],
+    "bepInExPackVersion": DEPENDENCY_BASELINE["bepinex_version"],
+    "netFrameworkReferenceAssembliesVersion": DEPENDENCY_BASELINE["netfx_reference_version"],
+}
 STALE_DEPENDENCY_BASELINE = {"jotunnVersion": "2.29.2", "bepInExPackVersion": "5.4.2333", "netFrameworkReferenceAssembliesVersion": "1.0.3"}
 NEW_DEPENDENCY_VERSIONS = {"jotunnVersion": "9.9.9", "bepInExPackVersion": "8.8.8", "netFrameworkReferenceAssembliesVersion": "7.7.7"}
 RENDERED_DOCS = ("README.md", ".context/references/project.md", ".context/findings/valheim-runtime.md", ".context/state/current.md", "docs/dependencies.md", "docs/development.md")

@@ -15,7 +15,12 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from bootstrap.model import DEPENDENCY_BASELINE
 from tests.fixtures._helpers import clone_generated_temp
+
+
+JOTUNN_BASELINE = DEPENDENCY_BASELINE["jotunn_version"]
+BEPINEX_BASELINE = DEPENDENCY_BASELINE["bepinex_version"]
 
 
 def load_maintenance(project: Path):
@@ -37,7 +42,7 @@ def load_maintenance(project: Path):
                 sys.modules[name] = previous
 
 
-def write_runtime(project: Path, *, jotunn: str | None = "2.30.2", bepinex: str | None = "5.4.2351") -> None:
+def write_runtime(project: Path, *, jotunn: str | None = JOTUNN_BASELINE, bepinex: str | None = BEPINEX_BASELINE) -> None:
     steamapps = project / "Steam Library" / "steamapps"
     install = steamapps / "common" / "Valheim"
     managed = install / "valheim_Data" / "Managed"
@@ -153,7 +158,7 @@ class GameStackMaintenanceTests(unittest.TestCase):
         self.assertEqual([], run.call_args_list)
         self.assertEqual(before, {path: path.read_bytes() for path in before})
         self.assertIn("Steam build ID 123456", stdout)
-        self.assertIn("installed development-profile version: 2.30.2", stdout)
+        self.assertIn(f"installed development-profile version: {JOTUNN_BASELINE}", stdout)
         self.assertEqual(2, stdout.count("drift status: matching"))
         self.assertIn("freshness: unknown", stdout)
         self.assertNotIn("current", stdout.lower())
@@ -188,7 +193,7 @@ class GameStackMaintenanceTests(unittest.TestCase):
         self.assertEqual(0, code, stderr)
         cfg = json.loads((self.project / "suite.config.json").read_text(encoding="utf-8"))
         self.assertEqual("2.31.0", cfg["jotunnVersion"])
-        self.assertEqual("5.4.2351", cfg["bepInExPackVersion"])
+        self.assertEqual(BEPINEX_BASELINE, cfg["bepInExPackVersion"])
         self.assertIn("2.31.0", (self.project / "build" / "Suite.Generated.props").read_text(encoding="utf-8"))
         self.assertIn(["bash", "scripts/refresh-references.sh", "Debug"], commands)
         self.assertIn(["bash", "scripts/build.sh", "Debug"], commands)
@@ -201,7 +206,7 @@ class GameStackMaintenanceTests(unittest.TestCase):
         code, _stdout, stderr, commands = self.apply_with_sync("--bepinex", "5.4.2400")
         self.assertEqual(0, code, stderr)
         cfg = json.loads((self.project / "suite.config.json").read_text(encoding="utf-8"))
-        self.assertEqual("2.30.2", cfg["jotunnVersion"])
+        self.assertEqual(JOTUNN_BASELINE, cfg["jotunnVersion"])
         self.assertEqual("5.4.2400", cfg["bepInExPackVersion"])
         self.assertNotIn(["bash", "scripts/refresh-references.sh", "Debug"], commands)
 
@@ -531,12 +536,12 @@ class GameStackMaintenanceTests(unittest.TestCase):
         profile = self.project / "Profile with spaces"
         with (profile / "mods.yml").open("a", encoding="utf-8") as output:
             output.write("- manifestVersion: 1\n  name: Unrelated\n  versionNumber: malformed\n")
-        self.assertEqual("5.4.2351", self.module.inspect_runtime().bepinex)
+        self.assertEqual(BEPINEX_BASELINE, self.module.inspect_runtime().bepinex)
 
 
     def test_check_rejects_stale_generated_metadata(self) -> None:
         props = self.project / "build" / "Suite.Generated.props"
-        props.write_text(props.read_text(encoding="utf-8").replace("2.30.2", "2.31.0"), encoding="utf-8")
+        props.write_text(props.read_text(encoding="utf-8").replace(JOTUNN_BASELINE, "99.99.99"), encoding="utf-8")
         code, stdout, stderr = self.invoke("check")
         self.assertEqual(2, code)
         self.assertIn("stale generated file build/Suite.Generated.props", stderr)
