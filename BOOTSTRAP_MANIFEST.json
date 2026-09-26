@@ -18,8 +18,8 @@
     "tests/template/"
   ],
   "dependencyBaseline": {
-    "Jotunn": "2.30.0",
-    "BepInExPack_Valheim": "5.4.2350",
+    "Jotunn": "2.30.2",
+    "BepInExPack_Valheim": "5.4.2351",
     "Microsoft.NETFramework.ReferenceAssemblies": "1.0.3"
   },
   "preservedArchitecture": [
