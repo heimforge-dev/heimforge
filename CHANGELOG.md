@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/heimforge-dev/heimforge/compare/v0.6.0...v0.7.0) (2026-09-26)
+
+
+### Features
+
+* establish open-source licensing boundary ([#9](https://github.com/heimforge-dev/heimforge/issues/9)) ([df5b26f](https://github.com/heimforge-dev/heimforge/commit/df5b26f98eb9c6ab57e7de83b1d78dfaff6e0304))
+
 ## [0.6.0](https://github.com/heimforge-dev/heimforge/compare/v0.5.0...v0.6.0) (2026-09-26)
 
 
