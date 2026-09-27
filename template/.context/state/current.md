@@ -18,12 +18,12 @@ The module list below is the initial scaffold snapshot. For current project memb
 - Metadata-driven deployment prevents client/server DLL cross-contamination.
 - Deterministic local package generation and SHA-256 checksums are implemented.
 - Portable scaffold tests cover repository invariants.
+- Portable agent instructions and project skills are available through `AGENTS.md` and `.agents/skills/`.
 
 ## In progress
 
 - Local WSL/Valheim environment verification.
 - First successful full plugin build against installed Valheim/Jotunn.
-- OMP extension load verification against the user's installed OMP version.
 
 ## Next
 
@@ -32,8 +32,7 @@ The module list below is the initial scaffold snapshot. For current project memb
 3. Run `./scripts/bootstrap.sh`.
 4. If publicized Valheim references are absent, run `python3 scripts/update-game-stack.py refresh` after verifying `VALHEIM_INSTALL`; this refreshes references, builds, and runs preflight.
 5. Otherwise run `./scripts/build.sh Debug` for an ordinary parallel build.
-6. Load OMP and verify the `valheim-dev` extension and tools.
-7. Design and implement the first real feature using `docs/features/TEMPLATE.md`.
+6. Design and implement the first real feature using `docs/features/TEMPLATE.md`.
 
 ## Initial milestones
 

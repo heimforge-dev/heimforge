@@ -1,6 +1,6 @@
 # {{SUITE_NAME}} Project Instructions
 
-This repository is a modular Valheim mod suite. Reusable coding-harness behavior belongs in the user's global OMP rules.
+This repository is a modular Valheim mod suite. These instructions and the project skills under `.agents/skills/` are provider-neutral and should work from any compatible coding-agent environment.
 
 ## Context routing
 
@@ -17,4 +17,4 @@ Detailed rules in the routed context and linked `docs/` files are mandatory when
 5. Treat WSL/Linux and the Bash scripts as the canonical development workflow; access the Windows client through `/mnt/c/...`. Do not create a second independent PowerShell implementation of build, deploy, or package behavior.
 6. `suite.config.json`, `suite.identity.lock.json`, and the canonical solution define suite structure and identity. Synchronize supported metadata edits; never hand-edit generated metadata.
 7. Keep changes minimal and scoped. Add dependencies and abstractions only for demonstrated requirements.
-8. Use native harness capabilities; do not create project-local generic agents or duplicate global Context Mode or Context7 configuration.
+8. Use capabilities provided by the active coding-agent environment. Do not add provider-specific project configuration or duplicate global agent configuration unless a concrete repository requirement needs it.

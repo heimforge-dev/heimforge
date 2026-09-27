@@ -9,7 +9,6 @@
 - Preserved per-module Jötunn compatibility boundaries.
 - Added transport-independent local/SSH server deployment with explicit optional Docker restart.
 
-### Harness
+### Development
 
-- OMP project context, domain skills, extension, and bootstrap prompt.
-- WSL-first canonical workflow.
+- WSL/Linux-first canonical workflow.

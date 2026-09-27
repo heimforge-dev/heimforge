@@ -64,6 +64,15 @@ Or non-interactively:
 `ServerCore`, `Client`, and `Shared.Diagnostics` can each be omitted when they
 are not needed.
 
+Portable coding-agent support is included by default using `AGENTS.md`,
+`.context/`, and standard project skills under `.agents/skills/`. It is not
+tied to a specific agent provider or harness.
+
+Use `--no-agent-tooling` to generate a project without that layer. Optional
+provider-specific integrations are additive adapters; for example,
+`--agent-adapter omp` adds the OMP extension and prompt without replacing the
+portable project instructions or skills.
+
 After generation:
 
 ```bash

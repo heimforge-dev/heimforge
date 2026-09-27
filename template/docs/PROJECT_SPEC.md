@@ -88,7 +88,7 @@ Prefer sidecar storage for suite metadata. Namespaced ZDO data is appropriate wh
 
 ### Milestone 0
 
-Repository/harness scaffold, context, skills, extension, build scripts, dependency docs, metadata validation, and deterministic local packaging foundation.
+Repository scaffold, build scripts, dependency docs, metadata validation, deterministic local packaging foundation, and optional portable agent tooling.
 
 ### Milestone 1
 

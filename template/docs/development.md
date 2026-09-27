@@ -131,11 +131,11 @@ Deployment never restarts a server implicitly:
 
 `--restart` runs the configured lifecycle only after deployment succeeds. `type: "docker"` executes `docker restart` locally for local transport and through the configured SSH host for SSH transport. `type: "none"` has no restart operation. A lifecycle failure is reported separately after the successful deployment remains in place. Docker Compose is not assumed.
 
-The OMP status and log tools delegate to `scripts/server_runtime.py`; the extension never constructs SSH or Docker commands. Schema-v2 Docker status/log operations run beside the configured container, locally or through SSH. `serverLogFile` remains a local bounded-tail source, and schema-v1 Docker Compose status/log behavior remains compatible.
+Optional agent adapters that expose status or log operations must delegate to `scripts/server_runtime.py`; adapters do not construct independent SSH or Docker command paths. Schema-v2 Docker status/log operations run beside the configured container, locally or through SSH. `serverLogFile` remains a local bounded-tail source, and schema-v1 Docker Compose status/log behavior remains compatible.
 
 ### Schema-v1 compatibility
 
-Existing schema-v1 files remain valid. `serverPluginDir` keeps its legacy local-deployment meaning; legacy Docker Compose/log fields remain available to legacy extension tools. To migrate, set `schemaVersion` to `2`, move `serverPluginDir` to `server.deployment.pluginDir`, select `server.deployment.type`, and add an independent `server.lifecycle` object.
+Existing schema-v1 files remain valid. `serverPluginDir` keeps its legacy local-deployment meaning; legacy Docker Compose/log fields remain available to legacy runtime tooling. To migrate, set `schemaVersion` to `2`, move `serverPluginDir` to `server.deployment.pluginDir`, select `server.deployment.type`, and add an independent `server.lifecycle` object.
 
 ## Metadata workflow
 

@@ -1,3 +1,4 @@
+import re
 import unittest
 
 from bootstrap.create_project import parse_args, resolve_params
@@ -83,6 +84,12 @@ class AgentIntegrationTests(unittest.TestCase):
 
         self.assertEqual(AGENT_TOOLING_FILES, default_files - bare_files)
         self.assertEqual(bare_files, default_files - AGENT_TOOLING_FILES)
+        for rel in sorted(bare_files):
+            self.assertEqual(
+                (default_dir / rel).read_bytes(),
+                (output_dir / rel).read_bytes(),
+                rel,
+            )
         self.assertFalse((output_dir / ".agents").exists())
         self.assertFalse((output_dir / ".context").exists())
         self.assertFalse((output_dir / "AGENTS.md").exists())
@@ -105,6 +112,39 @@ class AgentIntegrationTests(unittest.TestCase):
 
         self.assertEqual(OMP_ADAPTER_FILES, omp_files - default_files)
         self.assertEqual(default_files, omp_files - OMP_ADAPTER_FILES)
+        for rel in sorted(default_files):
+            self.assertEqual(
+                (default_dir / rel).read_bytes(),
+                (output_dir / rel).read_bytes(),
+                rel,
+            )
+
+    def test_default_generated_tree_has_no_provider_specific_agent_references(self):
+        _params, output_dir, result = generate_into_temp()
+        self.assertTrue(result.ok, result.errors)
+
+        forbidden_literals = (
+            ".omp/",
+            "@oh-my-pi",
+            "oh-my-pi",
+            "Context7",
+            "Context Mode",
+        )
+        for path in output_dir.rglob("*"):
+            if not path.is_file():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            rel = str(path.relative_to(output_dir))
+
+            with self.subTest(path=rel, marker="OMP"):
+                self.assertIsNone(re.search(r"\\bOMP\\b", text))
+
+            for marker in forbidden_literals:
+                with self.subTest(path=rel, marker=marker):
+                    self.assertNotIn(marker, text)
 
     def test_cli_defaults_to_portable_agent_tooling(self):
         params = _cli_params()

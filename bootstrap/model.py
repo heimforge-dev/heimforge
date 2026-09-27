@@ -395,7 +395,6 @@ def release_package_family_bullets(model: ProjectModel) -> str:
 def pending_runtime_proof_bullets(model: ProjectModel) -> str:
     lines = [
         "- full Jötunn/Valheim plugin compilation",
-        "- OMP extension load against the installed OMP package",
         "- dedicated-server plugin load",
         "- actual multiplayer compatibility behavior",
     ]
@@ -409,7 +408,6 @@ def hardening_pending_proof_bullets(model: ProjectModel) -> str:
     lines = [
         "- full plugin build against the user's actual Valheim/Jötunn installation",
         "- Jötunn publicized-reference generation on the user's WSL/Windows setup",
-        "- OMP extension loading/type compatibility against the installed OMP package",
         "- Valheim dedicated-server plugin load",
         "- client/server connection matrix",
     ]
@@ -429,7 +427,7 @@ def project_spec_milestone2_body(model: ProjectModel) -> str:
 
 
 def initial_milestones_bullets(model: ProjectModel) -> str:
-    lines = ["Repository/harness scaffold.", "Runtime plugin shells and side boundaries."]
+    lines = ["Repository and portable agent-tooling scaffold.", "Runtime plugin shells and side boundaries."]
     if model.shared_diagnostics:
         lines.append("Shared Diagnostics CustomRPC proof.")
     lines.append("First real feature (see `docs/features/TEMPLATE.md`).")

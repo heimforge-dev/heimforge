@@ -19,19 +19,19 @@ Read, in order:
 13. `docs/dependencies.md`
 14. `docs/module-catalog.md`
 
-Use the project skills under `.omp/skills/` when their domain applies.
+Use the project skills under `.agents/skills/` when their domain applies.
 
 ## Preserve these established decisions
 
 Do not redesign the high-confidence foundation during bootstrap:
 
-- WSL/Linux is canonical for repo/harness/build/test/package/server tooling.
+- WSL/Linux is canonical for repository, build, test, package, and server tooling.
 - Windows Valheim is the actual client runtime and is accessed through `/mnt/c/...`.
 - Runtime topology is Common + ServerCore + independent Shared modules + Client. Any of ServerCore, Client, or a Shared.* module may be absent in this repository; `suite.config.json`'s `projects` is authoritative for what was generated, and must always exactly match `<RootNamespace>.sln`'s real project membership.
 {{COMPATIBILITY_BOUNDARIES_LIST}}
 - Jötunn is the common modding/network platform; ServerSync is not added without a demonstrated need.
 - `suite.config.json` is the editable source of truth for supported mutable suite/project/package metadata. Generation-time suite identity (`suiteName`, `rootNamespace`) is locked in `suite.identity.lock.json` and cannot be changed by editing `suite.config.json`.
-- `scripts/deploy.py` is the single deployment implementation for both Bash and the OMP extension.
+- `scripts/deploy.py` is the single deployment implementation. Optional agent adapters must delegate to it rather than duplicate deployment behavior.
 - Do not replace these choices merely to make the scaffold look different.
 
 ## First actions
@@ -43,9 +43,8 @@ Do not redesign the high-confidence foundation during bootstrap:
 5. Inspect the configured development client for its resolved gameplay assembly (`assembly_valheim.dll`, with `Assembly-CSharp.dll` fallback for older layouts), BepInEx, and Jötunn.
 6. Verify the pinned Jötunn and BepInExPack versions against current stable releases. Do not silently upgrade. Report newer versions if any and preserve pins unless there is a compatibility reason to change.
 7. Run `./scripts/bootstrap.sh`.
-8. Verify OMP actually discovers `.omp/skills/`, `.omp/prompts/`, and `.omp/extensions/valheim-dev` using the installed OMP version.
-9. Record the inspected game version and configured runtime environment in `.context/findings/valheim-runtime.md`; create separate evidence-backed findings for any implementation-dependent claims.
-10. Update `.context/state/current.md` with the resulting verification status.
+8. Record the inspected game version and configured runtime environment in `.context/findings/valheim-runtime.md`; create separate evidence-backed findings for any implementation-dependent claims.
+9. Update `.context/state/current.md` with the resulting verification status.
 
 ## Jötunn reference refresh
 
@@ -72,7 +71,6 @@ Confirm that:
 - net48 runtime projects have cross-platform reference-assembly support
 - deterministic packaging code is present rather than a placeholder
 - deployment classification is metadata-driven and excludes wrong-side DLLs
-- OMP extension loads under the user's installed OMP
 
 ## Milestone 1 acceptance
 
@@ -94,13 +92,13 @@ Define the project's first real feature using `docs/features/TEMPLATE.md`:
 
 - classify it as SERVER_ONLY, SHARED_OPTIONAL, SHARED_REQUIRED, or CLIENT_ONLY
 - use the `valheim-modding`, `valheim-networking`, and `harmony-reverse-engineering` skills as appropriate
-- consult current Jötunn documentation or Context7 before coding
+- consult current Jötunn documentation or another available current documentation source before coding
 - if game internals are required, reverse engineer only what is needed and record every Harmony patch in `docs/patch-ledger.md`
 - prefer a disposable world for any destructive testing
 
-## Harness discipline
+## Agent discipline
 
-Use native harness planning, review, subagents, worktrees, and model routing. Do not create project-specific generic agents duplicating those capabilities.
+Use the planning, review, parallelism, and other capabilities of the active coding-agent environment when available. Do not add project-local provider-specific agent frameworks merely to reproduce capabilities the active environment already supplies.
 
 Prefer small coherent changes. Avoid speculative frameworks, custom launchers, auto-updaters, web dashboards, cloud services, databases, generic event buses, and custom networking layers.
 
