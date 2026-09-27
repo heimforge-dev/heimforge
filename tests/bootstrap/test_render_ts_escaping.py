@@ -80,6 +80,7 @@ class BunSyntaxCheckTests(unittest.TestCase):
             author="Tai Benvenuti",
             thunderstore_namespace="TaiBenvenuti",
             suite_version="1.2.3-alpha+build.1",
+            agent_adapters=("omp",),
         )
         self.assertTrue(result.ok, result.errors)
         index_ts = output_dir / ".omp" / "extensions" / "valheim-dev" / "index.ts"

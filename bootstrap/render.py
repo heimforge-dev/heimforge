@@ -102,6 +102,8 @@ class TemplateSourceError(OSError):
 # `has_server_package`/`has_client_package` model properties that drive
 # `packaging/server/README.md`'s and `packaging/client/README.md`'s own content.
 OPTIONAL_GROUP_PRESENT = {
+    "agent_tooling": lambda m: m.has_agent_tooling,
+    "omp_adapter": lambda m: m.has_omp_adapter,
     "server_core": lambda m: m.server_core is not None,
     "client": lambda m: m.client is not None,
     "shared_diagnostics": lambda m: m.shared_diagnostics is not None,

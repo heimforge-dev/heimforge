@@ -5,7 +5,7 @@ description: Inspect current Valheim assemblies and implement or repair Harmony 
 
 # Harmony and Reverse Engineering
 
-1. Inspect the actual installed assembly, preferably with `valheim_inspect` or `ilspycmd`.
+1. Inspect the actual installed assembly with `ilspycmd` or another inspection tool available in the active environment.
 2. Search current Jotunn APIs/events first.
 3. Locate the target type and exact method signature.
 4. Trace callers/callees where behavior or ownership is unclear.

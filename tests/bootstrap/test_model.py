@@ -28,6 +28,37 @@ class ModelTests(unittest.TestCase):
             {"Sampleheim.Common", "Sampleheim.ServerCore", "Sampleheim.Client", "Sampleheim.Shared.Diagnostics"},
         )
 
+    def test_portable_agent_tooling_is_enabled_by_default(self):
+        model = build_model(make_params())
+        self.assertTrue(model.has_agent_tooling)
+        self.assertEqual((), model.params.agent_adapters)
+        self.assertFalse(model.has_omp_adapter)
+
+    def test_omp_adapter_is_explicit_and_additive(self):
+        model = build_model(make_params(agent_adapters=("omp",)))
+        self.assertTrue(model.has_agent_tooling)
+        self.assertTrue(model.has_omp_adapter)
+
+    def test_agent_adapter_requires_agent_tooling(self):
+        with self.assertRaises(naming.NamingError) as ctx:
+            build_model(
+                make_params(
+                    include_agent_tooling=False,
+                    agent_adapters=("omp",),
+                )
+            )
+        self.assertIn("require portable agent tooling", str(ctx.exception))
+
+    def test_build_model_rejects_unknown_agent_adapter(self):
+        with self.assertRaises(naming.NamingError) as ctx:
+            build_model(make_params(agent_adapters=("unknown",)))
+        self.assertIn("unsupported agent adapter", str(ctx.exception))
+
+    def test_build_model_rejects_duplicate_agent_adapters(self):
+        with self.assertRaises(naming.NamingError) as ctx:
+            build_model(make_params(agent_adapters=("omp", "omp")))
+        self.assertIn("must not contain duplicates", str(ctx.exception))
+
     def test_build_model_omits_excluded_modules(self):
         model = build_model(make_params(include_client=False))
         self.assertIsNone(model.client)

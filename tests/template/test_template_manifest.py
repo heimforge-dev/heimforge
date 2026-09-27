@@ -317,7 +317,6 @@ class ManifestIndependentSanityTests(unittest.TestCase):
 
     _CURATED_REQUIRED_PATHS = frozenset(
         {
-            "AGENTS.md",
             "README.md",
             "CHANGELOG.md",
             "LICENSE.todo",
@@ -342,6 +341,23 @@ class ManifestIndependentSanityTests(unittest.TestCase):
         }
     )
     _CURATED_OPTIONAL_PATHS = {
+        "agent_tooling": frozenset(
+            {
+                "AGENTS.md",
+                "BOOTSTRAP_PROMPT.md",
+                ".context/CONTEXT.md",
+                ".agents/skills/harmony-reverse-engineering/SKILL.md",
+                ".agents/skills/valheim-modding/SKILL.md",
+                ".agents/skills/valheim-networking/SKILL.md",
+                ".agents/skills/valheim-release/SKILL.md",
+            }
+        ),
+        "omp_adapter": frozenset(
+            {
+                ".omp/extensions/valheim-dev/index.ts",
+                ".omp/prompts/bootstrap-valheim.md",
+            }
+        ),
         "server_core": frozenset({"src/__ROOT_NAMESPACE__.ServerCore/Plugin.cs"}),
         "client": frozenset({"src/__ROOT_NAMESPACE__.Client/Plugin.cs"}),
         "shared_diagnostics": frozenset({"src/__ROOT_NAMESPACE__.Shared.Diagnostics/Plugin.cs"}),
