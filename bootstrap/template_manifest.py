@@ -21,32 +21,10 @@ import posixpath
 # modules are included.
 REQUIRED_TEMPLATE_FILES: frozenset[str] = frozenset(
     {
-        ".context/CONTEXT.md",
-        ".context/_meta/schema.md",
-        ".context/_templates/finding.md",
-        ".context/findings/CONTEXT.md",
-        ".context/findings/valheim-runtime.md",
-        ".context/references/CONTEXT.md",
-        ".context/references/architecture.md",
-        ".context/references/networking.md",
-        ".context/references/patching.md",
-        ".context/references/project.md",
-        ".context/references/testing.md",
-        ".context/state/CONTEXT.md",
-        ".context/state/current.md",
         ".editorconfig",
         ".env.example",
         ".gitignore",
-        ".omp/extensions/valheim-dev/README.md",
-        ".omp/extensions/valheim-dev/index.ts",
-        ".omp/prompts/bootstrap-valheim.md",
-        ".omp/skills/harmony-reverse-engineering/SKILL.md",
-        ".omp/skills/valheim-modding/SKILL.md",
-        ".omp/skills/valheim-networking/SKILL.md",
-        ".omp/skills/valheim-release/SKILL.md",
         ".valheim/dev.json.example",
-        "AGENTS.md",
-        "BOOTSTRAP_PROMPT.md",
         "CHANGELOG.md",
         "Directory.Build.props",
         "Directory.Packages.props",
@@ -113,6 +91,36 @@ REQUIRED_TEMPLATE_FILES: frozenset[str] = frozenset(
 # `docs/TEMPLATE_MAINTENANCE.md` for how to add a new optional module or
 # optional documentation group.
 OPTIONAL_TEMPLATE_FILES: dict[str, frozenset[str]] = {
+    "agent_tooling": frozenset(
+        {
+            ".agents/skills/harmony-reverse-engineering/SKILL.md",
+            ".agents/skills/valheim-modding/SKILL.md",
+            ".agents/skills/valheim-networking/SKILL.md",
+            ".agents/skills/valheim-release/SKILL.md",
+            ".context/CONTEXT.md",
+            ".context/_meta/schema.md",
+            ".context/_templates/finding.md",
+            ".context/findings/CONTEXT.md",
+            ".context/findings/valheim-runtime.md",
+            ".context/references/CONTEXT.md",
+            ".context/references/architecture.md",
+            ".context/references/networking.md",
+            ".context/references/patching.md",
+            ".context/references/project.md",
+            ".context/references/testing.md",
+            ".context/state/CONTEXT.md",
+            ".context/state/current.md",
+            "AGENTS.md",
+            "BOOTSTRAP_PROMPT.md",
+        }
+    ),
+    "omp_adapter": frozenset(
+        {
+            ".omp/extensions/valheim-dev/README.md",
+            ".omp/extensions/valheim-dev/index.ts",
+            ".omp/prompts/bootstrap-valheim.md",
+        }
+    ),
     "server_core": frozenset(
         {
             "src/__ROOT_NAMESPACE__.ServerCore/Core/FeatureRegistry.cs",

@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import naming
-from .model import ProjectModel, ProjectParams, build_model, identity_lock_dict, solution_text, suite_config_dict, validate_params
+from .model import AGENT_ADAPTERS, ProjectModel, ProjectParams, build_model, identity_lock_dict, solution_text, suite_config_dict, validate_params
 from .render import TEMPLATE_DIR, render_tree, validate_template
 from .validate_generated import NO_BYTECODE_ENV, ValidationResult, validate_generated
 
@@ -62,6 +62,14 @@ def interactive_params() -> tuple[ProjectParams, str]:
     include_server_core = _prompt_yes_no("Include ServerCore?")
     include_client = _prompt_yes_no("Include Client?")
     include_shared_diagnostics = _prompt_yes_no("Include Shared.Diagnostics?")
+    include_agent_tooling = _prompt_yes_no("Include portable agent tooling?", default=True)
+    agent_adapters: tuple[str, ...] = ()
+    if include_agent_tooling:
+        agent_adapters = tuple(
+            adapter
+            for adapter in sorted(AGENT_ADAPTERS)
+            if _prompt_yes_no(f"Include {adapter.upper()} agent adapter?", default=False)
+        )
     params = ProjectParams(
         suite_name=suite_name,
         root_namespace=root_namespace,
@@ -72,6 +80,8 @@ def interactive_params() -> tuple[ProjectParams, str]:
         include_server_core=include_server_core,
         include_client=include_client,
         include_shared_diagnostics=include_shared_diagnostics,
+        include_agent_tooling=include_agent_tooling,
+        agent_adapters=agent_adapters,
     )
     return params, output_directory
 
@@ -88,6 +98,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--no-server-core", action="store_true")
     parser.add_argument("--no-client", action="store_true")
     parser.add_argument("--no-shared-diagnostics", action="store_true")
+    parser.add_argument("--no-agent-tooling", action="store_true")
+    parser.add_argument(
+        "--agent-adapter",
+        action="append",
+        choices=sorted(AGENT_ADAPTERS),
+        default=[],
+        metavar="ADAPTER",
+        help="Add a harness-specific adapter on top of the portable agent tooling; repeatable.",
+    )
     parser.add_argument("--force", action="store_true")
     return parser.parse_args(argv)
 
@@ -121,6 +140,8 @@ def resolve_params(args: argparse.Namespace) -> tuple[ProjectParams, str]:
         include_server_core=not args.no_server_core,
         include_client=not args.no_client,
         include_shared_diagnostics=not args.no_shared_diagnostics,
+        include_agent_tooling=not args.no_agent_tooling,
+        agent_adapters=tuple(args.agent_adapter),
     )
     return params, args.output
 

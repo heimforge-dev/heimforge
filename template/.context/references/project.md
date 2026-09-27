@@ -12,11 +12,11 @@ Build a modular Valheim mod suite for a dedicated private server while preservin
 
 Canonical development environment: **WSL/Linux**.
 
-- repository, Git, OMP/Pi harness, dotnet, build/test/package scripts: WSL
+- repository, Git, dotnet, build/test/package scripts, and coding-agent tooling: WSL
 - Windows Valheim client: accessed from WSL through `/mnt/c/...`
 - dedicated test/server environment: Linux/Docker where possible
 - Bash/WSL scripts define the only canonical project workflow
-- `scripts/deploy.py` is the single deployment implementation used by the Bash wrappers and OMP extension
+- `scripts/deploy.py` is the single deployment implementation used by the Bash wrappers; optional agent adapters must delegate to it
 
 Keep the repository in the WSL filesystem, for example `~/src/{{ROOT_NAMESPACE_LOWER}}`, rather than under `/mnt/c`.
 
@@ -44,8 +44,8 @@ Exact dependency versions and C# language version are authoritative in `suite.co
 
 - Keep changes minimal and scoped. YAGNI applies.
 - Introduce an abstraction only when a concrete consumer needs it.
-- Do not duplicate globally configured Context Mode or Context7 configuration in this repository without a project-specific requirement.
-- Use native harness capabilities; do not create generic planner, reviewer, scout, or worker agents for this project.
+- Keep provider-specific agent configuration out of the repository unless an explicit adapter requires it.
+- Prefer portable project instructions and skills; use capabilities of the active agent environment rather than creating redundant project-local agent frameworks.
 
 ## Initial non-goals
 

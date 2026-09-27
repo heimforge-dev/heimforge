@@ -1,5 +1,5 @@
 # Tools
 
-Keep project-specific helper tools here only when the canonical scripts or `.omp/extensions/valheim-dev` are insufficient.
+Keep project-specific helper tools here only when the canonical scripts and portable project skills are insufficient.
 
-Do not build a second general-purpose harness or duplicate build/deploy/package classification logic.
+Do not build a second general-purpose agent framework or duplicate build/deploy/package classification logic.

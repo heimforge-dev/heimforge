@@ -2,7 +2,7 @@
 
 ## The template manifest
 
-`bootstrap/template_manifest.py` is the template definition: `REQUIRED_TEMPLATE_FILES` (rendered unconditionally) and `OPTIONAL_TEMPLATE_FILES` (rendered per included optional module). `template/`'s filesystem contents are not themselves the template — `render_tree()` renders exactly the manifest's approved paths, and `validate_template()` (backing `scripts/validate-template.sh`) fails if a manifest file is missing, or if `template/` contains a filesystem entry — file *or* directory, empty or not — that isn't in (or a required ancestor of) the manifest. Adding a file under `template/` without adding it here has no effect on generated output and fails validation instead of being silently ignored.
+`bootstrap/template_manifest.py` is the template definition: `REQUIRED_TEMPLATE_FILES` (rendered unconditionally) and `OPTIONAL_TEMPLATE_FILES` (rendered when the corresponding `ProjectModel` predicate is enabled). Optional groups cover modules, package-side documentation, portable agent tooling, and harness-specific adapters. `template/`'s filesystem contents are not themselves the template — `render_tree()` renders exactly the manifest's approved paths, and `validate_template()` (backing `scripts/validate-template.sh`) fails if a manifest file is missing, or if `template/` contains a filesystem entry — file *or* directory, empty or not — that isn't in (or a required ancestor of) the manifest. Adding a file under `template/` without adding it here has no effect on generated output and fails validation instead of being silently ignored.
 
 Every manifest entry must be a normalized, relative, POSIX-style path: no leading `/`, no backslashes, no `.`/`..` component, and no double slashes. `validate_manifest_structure()` enforces this on the manifest itself (not just on what happens to exist in `template/`), and also rejects a path listed in more than one group (`REQUIRED_TEMPLATE_FILES` and an `OPTIONAL_TEMPLATE_FILES` set, or two different `OPTIONAL_TEMPLATE_FILES` sets). A literal path repeated *within* one `{...}` set is not separately checked for — Python's `frozenset` already collapses that to one element before any validation runs, so there is nothing to observe.
 
@@ -11,7 +11,7 @@ A manifest-approved path is also re-verified at the moment of reading: `render_t
 ## Adding a new template file
 
 1. Add the file under `template/` at the path it should render to (using `__ROOT_NAMESPACE__` for module-specific `src/`/`tests/` directories).
-2. Add its `template/`-relative path to `bootstrap/template_manifest.py`'s `REQUIRED_TEMPLATE_FILES` (or the relevant `OPTIONAL_TEMPLATE_FILES[module]` set if it belongs to an optional module).
+2. Add its `template/`-relative path to `bootstrap/template_manifest.py`'s `REQUIRED_TEMPLATE_FILES` or the relevant model-gated `OPTIONAL_TEMPLATE_FILES` group.
 3. Run `scripts/validate-template.sh`.
 
 ## Licensing boundary
@@ -105,15 +105,21 @@ Common is a shared library other plugins reference, not itself a BepInEx plugin.
 
 A weaker, per-side form of the same invariant applies to `template/scripts/deploy.py`: `side_has_runtime_module()` rejects `--target server`/`--target client` when the current validated `packages` groups put no non-`common` project on that side (e.g. a ServerCore-only suite's `--target client`), before any destination is created, flocked, or written to -- otherwise deploying only `Common.dll` would create a deployment-ownership manifest for a side with no plugin to load it. This reads `packages` directly (not bootstrap-time module flags), so it stays correct after a supported post-generation structural edit. See `tests/template/test_deploy_side_availability.py`.
 
-## Adding an optional documentation group
+## Adding an optional template group
 
-Not every module-dependent template file should be gated on a single module's presence -- `packaging/server/README.md` and `packaging/client/README.md` are gated on `ProjectModel.has_server_package`/`has_client_package` instead, because Shared.Diagnostics (a `sharedOptional` module) reaches *both* package sides even when ServerCore/Client are absent. `bootstrap/template_manifest.py`'s `OPTIONAL_TEMPLATE_FILES` supports this: `server_package_docs`/`client_package_docs` are ordinary optional groups, just keyed by a package-side predicate instead of a module-presence predicate, registered in `bootstrap/render.py`'s `OPTIONAL_GROUP_PRESENT` exactly like a module group. To add another optional documentation group:
+Not every optional template file is gated on a module. `packaging/server/README.md` and `packaging/client/README.md` use package-side predicates, `agent_tooling` uses `ProjectModel.has_agent_tooling`, and harness adapters use their own model predicates. `bootstrap/template_manifest.py`'s `OPTIONAL_TEMPLATE_FILES` is therefore a general model-gated grouping mechanism, with every group registered in `bootstrap/render.py`'s `OPTIONAL_GROUP_PRESENT`. To add another optional template group:
 
 1. Add the file(s) under `template/` and a new key + `frozenset` of paths to `OPTIONAL_TEMPLATE_FILES`.
 2. Add the matching predicate (a `lambda m: ...` over `ProjectModel`) to `OPTIONAL_GROUP_PRESENT`. Prefer an existing `ProjectModel` property/method over a one-off inline condition so source-inclusion and prose-rendering can never independently drift, which is exactly how the original audited issue happened (source filtering existed; prose rendering didn't follow it).
 3. For small conditional passages *within* an otherwise-always-rendered file (as opposed to the whole file being conditional), add a `bootstrap/model.py` function that renders the complete passage -- or `""` -- and wire it through `token_map()`/`KNOWN_TOKENS` like any other token; see "Adding a token" above. Do not build a generic Markdown conditional parser for this.
 4. Add fixture coverage asserting the file exists/is absent for the right combinations, and that its rendered content never names a module/package family this generation doesn't have.
 5. Update the token table and this file.
+
+## Portable agent tooling and harness adapters
+
+Portable agent tooling is enabled by default and is one coherent optional group: `AGENTS.md`, `BOOTSTRAP_PROMPT.md`, `.context/**`, and `.agents/skills/**`. The content of that group must remain provider-neutral. `--no-agent-tooling` omits it completely, so required/core files must never depend on it.
+
+Harness-specific files belong in separate adapter groups. The current `omp_adapter` contains `.omp/extensions/valheim-dev/**` and `.omp/prompts/bootstrap-valheim.md`; it must delegate operational behavior to the same canonical scripts used without an agent harness. Do not place portable skills or context under a provider-owned directory, and do not let enabling an adapter change bytes in provider-neutral generated files.
 
 ## Adding a new scalar generator input
 
@@ -135,4 +141,4 @@ Not every module-dependent template file should be gated on a single module's pr
 
 ## Keeping `template/` generic
 
-`template/` must stay a generic modular framework: no concrete gameplay features, no project-specific milestones. `docs/module-catalog.md`, `docs/PROJECT_SPEC.md`'s milestones, and `BOOTSTRAP_PROMPT.md` intentionally stop at "prove the scaffold and Shared Diagnostics architecture, then define the first real feature using `docs/features/TEMPLATE.md`" rather than naming any specific feature.
+`template/` must stay a generic modular framework: no concrete gameplay features, no project-specific milestones. Portable agent instructions and skills must also remain provider-neutral; provider-specific discovery or tool integration belongs only in an explicit adapter group. `docs/module-catalog.md`, `docs/PROJECT_SPEC.md`'s milestones, and `BOOTSTRAP_PROMPT.md` intentionally stop at "prove the scaffold and Shared Diagnostics architecture, then define the first real feature using `docs/features/TEMPLATE.md`" rather than naming any specific feature.

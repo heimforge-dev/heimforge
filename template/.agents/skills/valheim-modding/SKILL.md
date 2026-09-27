@@ -12,7 +12,7 @@ Use this workflow for Valheim feature implementation.
 1. Read `.context/CONTEXT.md`, `.context/references/project.md`, `.context/references/architecture.md`, and `.context/state/current.md`.
 2. Classify the feature as `SERVER_ONLY`, `SHARED_OPTIONAL`, `SHARED_REQUIRED`, or `CLIENT_ONLY`.
 3. Record or update the feature document from `docs/features/TEMPLATE.md`.
-4. Consult current Jotunn docs/Context7 first.
+4. Consult current Jotunn documentation or another available current documentation source first.
 5. Prefer Jotunn APIs/events over Harmony.
 6. If Valheim internals are required, use the `harmony-reverse-engineering` skill.
 7. Determine which machine owns and executes the behavior.

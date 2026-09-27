@@ -20,6 +20,8 @@ DEPENDENCY_BASELINE = {
     "csharp_language_version": "10",
 }
 
+AGENT_ADAPTERS = frozenset({"omp"})
+
 
 @dataclass(frozen=True)
 class ProjectParams:
@@ -32,6 +34,8 @@ class ProjectParams:
     include_server_core: bool = True
     include_client: bool = True
     include_shared_diagnostics: bool = True
+    include_agent_tooling: bool = True
+    agent_adapters: tuple[str, ...] = ()
 
 
 def validate_params(p: ProjectParams) -> None:
@@ -113,8 +117,28 @@ class ProjectModel:
         contributes because it always reaches the client side too."""
         return self.client is not None or self.shared_diagnostics is not None
 
+    @property
+    def has_agent_tooling(self) -> bool:
+        return self.params.include_agent_tooling
+
+    @property
+    def has_omp_adapter(self) -> bool:
+        return "omp" in self.params.agent_adapters
+
 
 def build_model(params: ProjectParams) -> ProjectModel:
+    unknown_adapters = sorted(set(params.agent_adapters) - AGENT_ADAPTERS)
+    if unknown_adapters:
+        raise naming.NamingError(
+            "unsupported agent adapter(s): " + ", ".join(unknown_adapters)
+        )
+    if len(set(params.agent_adapters)) != len(params.agent_adapters):
+        raise naming.NamingError("agent adapters must not contain duplicates")
+    if not params.include_agent_tooling and params.agent_adapters:
+        raise naming.NamingError(
+            "agent adapters require portable agent tooling; remove --no-agent-tooling "
+            "or omit the adapter"
+        )
     if not (params.include_server_core or params.include_client or params.include_shared_diagnostics):
         raise naming.NamingError(
             "at least one runtime module must be enabled: ServerCore, Client, or Shared.Diagnostics "
@@ -371,7 +395,6 @@ def release_package_family_bullets(model: ProjectModel) -> str:
 def pending_runtime_proof_bullets(model: ProjectModel) -> str:
     lines = [
         "- full Jötunn/Valheim plugin compilation",
-        "- OMP extension load against the installed OMP package",
         "- dedicated-server plugin load",
         "- actual multiplayer compatibility behavior",
     ]
@@ -385,7 +408,6 @@ def hardening_pending_proof_bullets(model: ProjectModel) -> str:
     lines = [
         "- full plugin build against the user's actual Valheim/Jötunn installation",
         "- Jötunn publicized-reference generation on the user's WSL/Windows setup",
-        "- OMP extension loading/type compatibility against the installed OMP package",
         "- Valheim dedicated-server plugin load",
         "- client/server connection matrix",
     ]
@@ -405,7 +427,7 @@ def project_spec_milestone2_body(model: ProjectModel) -> str:
 
 
 def initial_milestones_bullets(model: ProjectModel) -> str:
-    lines = ["Repository/harness scaffold.", "Runtime plugin shells and side boundaries."]
+    lines = ["Repository and portable agent-tooling scaffold.", "Runtime plugin shells and side boundaries."]
     if model.shared_diagnostics:
         lines.append("Shared Diagnostics CustomRPC proof.")
     lines.append("First real feature (see `docs/features/TEMPLATE.md`).")

@@ -116,7 +116,13 @@ def clone_generated_temp(**overrides) -> tuple[ProjectParams, Path, ValidationRe
 
 
 def expected_relpaths(
-    root_namespace: str, *, server_core: bool = True, client: bool = True, shared_diagnostics: bool = True
+    root_namespace: str,
+    *,
+    server_core: bool = True,
+    client: bool = True,
+    shared_diagnostics: bool = True,
+    include_agent_tooling: bool = True,
+    agent_adapters: tuple[str, ...] = (),
 ) -> set[str]:
     """The exact set of files a successful `generate()` must produce:
     every manifest-approved path (post `__ROOT_NAMESPACE__` substitution,
@@ -132,6 +138,8 @@ def expected_relpaths(
     has_server_package = server_core or shared_diagnostics
     has_client_package = client or shared_diagnostics
     for included, group in (
+        (include_agent_tooling, "agent_tooling"),
+        ("omp" in agent_adapters, "omp_adapter"),
         (server_core, "server_core"),
         (client, "client"),
         (shared_diagnostics, "shared_diagnostics"),
