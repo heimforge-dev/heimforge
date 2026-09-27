@@ -2,6 +2,9 @@
 
 A generator that produces standalone, hardened Valheim mod-suite repositories from a small set of identity parameters. It is not itself a Valheim mod.
 
+HeimForge is an unofficial community project and is not affiliated with or
+endorsed by Iron Gate or Coffee Stain.
+
 ## What it generates
 
 Each generated project is a complete, independent repository with:
