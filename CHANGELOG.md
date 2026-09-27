@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.1](https://github.com/heimforge-dev/heimforge/compare/v0.7.0...v0.7.1) (2026-09-27)
+
+
+### Documentation
+
+* add contributor and security guidance ([3c41042](https://github.com/heimforge-dev/heimforge/commit/3c4104209cb2de8944889dee9f77c8f5458f2ad1))
+* add contributor and security guidance ([5717ab7](https://github.com/heimforge-dev/heimforge/commit/5717ab763201c721f82e86fac6cd25435ea746d0))
+* add unofficial project disclaimer ([a1a57de](https://github.com/heimforge-dev/heimforge/commit/a1a57de47cce185efca28b14542785703aed3590))
+* add unofficial project disclaimer ([5215c16](https://github.com/heimforge-dev/heimforge/commit/5215c16f96a9eb5d60ee15069321b413da07f5d0))
+* link generated example project ([401ab4c](https://github.com/heimforge-dev/heimforge/commit/401ab4c5fa2ad22125ec7c9395b4123df98f1f6a))
+* link generated example project ([8934b36](https://github.com/heimforge-dev/heimforge/commit/8934b36bacbb228528841dbd5bf7fec14fba0149))
+
 ## [0.7.0](https://github.com/heimforge-dev/heimforge/compare/v0.6.0...v0.7.0) (2026-09-26)
 
 
