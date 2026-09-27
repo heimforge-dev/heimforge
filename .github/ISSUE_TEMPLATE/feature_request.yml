@@ -1,0 +1,65 @@
+name: Feature request
+description: Propose an improvement to HeimForge or its generated scaffold
+title: "feat: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        HeimForge's template is intentionally generic. Vibeheim-specific or other
+        project-specific gameplay features belong in those projects rather than
+        in HeimForge.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Generator / bootstrap
+        - Generated template
+        - Metadata / validation
+        - Build / test tooling
+        - Packaging
+        - Deployment
+        - Documentation
+        - Release automation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem or limitation would this change address?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the behavior or interface you would like.
+    validations:
+      required: true
+
+  - type: textarea
+    id: generated
+    attributes:
+      label: Effect on generated repositories
+      description: Describe whether this changes generated output, compatibility, or maintenance requirements.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional approaches or workarounds you considered.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for a similar request.
+          required: true
+        - label: This is generic HeimForge infrastructure rather than project-specific gameplay.
+          required: true
