@@ -1,114 +1,101 @@
 # HeimForge
 
-A generator that produces standalone, hardened Valheim mod-suite repositories from a small set of identity parameters. It is not itself a Valheim mod.
+HeimForge generates standalone Valheim mod-suite repositories built around
+BepInEx and Jötunn.
+
+It provides a structured starting point for projects that need separate
+client/server modules, repeatable builds, metadata-driven deployment, testing,
+and deterministic packaging.
 
 HeimForge is an unofficial community project and is not affiliated with or
 endorsed by Iron Gate or Coffee Stain.
 
 ## What it generates
 
-Each generated project is a complete, independent repository with:
+A generated project can include:
 
-- BepInEx + Jötunn plugin scaffolding across `Common` (always present) and up to three optional runtime tiers: `ServerCore`, `Client`, and `Shared.Diagnostics`.
-- Server-authoritative networking conventions and per-module Jötunn compatibility classification.
-- WSL-first build/test/deploy/package tooling driven by a single authoritative `suite.config.json`.
-- Metadata-driven client/server deployment and deterministic local packaging with SHA-256 checksums.
-- Project-local OMP resources: domain skills (`valheim-modding`, `valheim-networking`, `harmony-reverse-engineering`, `valheim-release`), a `valheim-dev` extension, and a bootstrap prompt.
-- A routed `.context/` task bundle (stable references, mutable state, version-sensitive findings) so agents load only what a task needs.
+- `Common` shared code
+- `ServerCore` server-only functionality
+- `Client` client-only functionality
+- `Shared.Diagnostics` shared optional diagnostics
+- BepInEx + Jötunn project scaffolding
+- build, test, deploy, and package scripts
+- metadata-driven client/server deployment
+- deterministic release packages with SHA-256 checksums
+- development and architecture documentation
 
-The generated project imports nothing from this repository and can be moved, renamed, or open-sourced independently.
-
-## Licensing
-
-Unless otherwise noted, HeimForge source and documentation outside `template/`
-are licensed under the Apache License 2.0. See `LICENSE`.
-
-Files under `template/` are licensed under MIT-0 because they are intended to
-be copied into independently owned generated repositories. See
-`template/LICENSES/MIT-0.txt`.
-
-A generated project does not automatically adopt MIT-0 as its project license.
-It starts with `LICENSE.todo` plus `LICENSES/MIT-0.txt`; the latter covers only
-the HeimForge scaffold material copied into that repository. Before public
-distribution, choose the generated project's own license, add it as the root
-`LICENSE`, remove `LICENSE.todo`, and retain any notices or terms required by
-third-party material.
-
-## Supported topology
-
-Every module declares one compatibility category:
-
-- `SERVER_ONLY`
-- `SHARED_OPTIONAL`
-- `SHARED_REQUIRED`
-- `CLIENT_ONLY`
-
-`ServerCore`, `Client`, and `Shared.Diagnostics` may each be individually included or omitted at generation time; `Common` is always generated.
-
-## WSL-first recommendation
-
-Generated projects are built, tested, and packaged from WSL/Linux; the Windows Valheim client is inspected and deployed to through `/mnt/c/...`. Keep both this repository and generated repositories inside the WSL filesystem rather than under `/mnt/c`.
+Generated repositories are standalone and do not depend on HeimForge after
+generation.
 
 ## Requirements
 
-- WSL2 (or native Linux) with `bash`, `git`, and Python 3.10 or newer.
-- .NET SDK (for the generated project's own build/test; not required merely to generate a project).
+To run HeimForge:
 
-No Valheim installation or game files are needed to run the generator itself.
+- WSL2 or native Linux
+- Bash and Git
+- Python 3.10 or newer
 
-## Test
+A .NET SDK is required to build and test generated projects, but not merely to
+run the generator.
 
-Run the full HeimForge test suite with:
+A Valheim installation is not required to generate a project.
 
-```bash
-./scripts/test.sh
-```
+## Quick start
 
-The script runs the canonical Python `unittest` discovery command from the repository root.
-
-## Interactive generation
+Generate a project interactively:
 
 ```bash
 ./scripts/create-project.sh
 ```
 
-Prompts for suite name, root namespace, plugin GUID root, author, Thunderstore namespace, initial version, output directory, and which optional modules (`ServerCore`, `Client`, `Shared.Diagnostics`) to include.
-
-## Non-interactive generation
+Or non-interactively:
 
 ```bash
 ./scripts/create-project.sh \
-  --name Vibeheim --namespace Vibeheim --guid com.example.vibeheim \
-  --author "Your Name" --thunderstore-namespace YourNS --version 0.1.0 \
-  --output ~/src/vibeheim
+  --name MyMod \
+  --namespace MyMod \
+  --guid com.example.mymod \
+  --author "Your Name" \
+  --thunderstore-namespace YourName \
+  --version 0.1.0 \
+  --output ~/src/mymod
 ```
 
-Add `--no-server-core`, `--no-client`, or `--no-shared-diagnostics` to omit an optional module. Combining all three is rejected: `Common` is a shared library, not a runtime plugin, and at least one runtime module is required. Add `--force` to overwrite a non-empty output directory (refused for the bootstrapper's own repository, its ancestors, `/`, and `$HOME`).
+`ServerCore`, `Client`, and `Shared.Diagnostics` can each be omitted when they
+are not needed.
 
-## Generated-project first steps
+After generation:
 
 ```bash
-cd ~/src/vibeheim
+cd ~/src/mymod
 cp Environment.props.example Environment.props
 cp .valheim/dev.json.example .valheim/dev.json
 ./scripts/preflight.sh --portable
 ```
 
-## Generated example
+## Example
 
-[HeimForge Example](https://github.com/heimforge-dev/heimforge-example)
-is a clean reference repository generated by HeimForge with all supported
-module tiers enabled and no added gameplay code.
+[heimforge-example](https://github.com/heimforge-dev/heimforge-example) is a
+clean reference project generated with all supported module tiers enabled and
+no added gameplay code.
 
-## Dogfood: Vibeheim
+## Licensing
 
-Vibeheim is HeimForge's real-world dogfood project. Generic infrastructure
-improvements discovered while developing Vibeheim should be upstreamed to
-this repository's `template/`; Vibeheim-specific gameplay stays entirely
-inside the Vibeheim repository.
+HeimForge source and documentation outside `template/` are licensed under
+Apache-2.0.
+
+Reusable scaffold material under `template/` is licensed under MIT-0 because
+it is copied into independently owned generated repositories.
+
+Generated projects choose their own project-level license before public
+distribution.
+
+See `LICENSE`, `template/LICENSES/MIT-0.txt`, and
+`docs/TEMPLATE_MAINTENANCE.md` for details.
 
 ## Documentation
 
-- `docs/GENERATOR_ARCHITECTURE.md`: how `bootstrap/` renders and validates a project.
-- `docs/TEMPLATE_MAINTENANCE.md`: the token vocabulary and how to extend `template/`.
-- `docs/TEST_PERFORMANCE_AUDIT.md`: certified test-suite performance audit and the safety boundaries it preserves.
+- `docs/GENERATOR_ARCHITECTURE.md` — generator architecture
+- `docs/TEMPLATE_MAINTENANCE.md` — maintaining the generated template
+- `CONTRIBUTING.md` — development and contribution workflow
+- `SECURITY.md` — reporting security issues
