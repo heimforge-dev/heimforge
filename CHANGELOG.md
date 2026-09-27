@@ -6,13 +6,11 @@
 ### Features
 
 * make agent tooling portable and optional ([181327f](https://github.com/heimforge-dev/heimforge/commit/181327f1df2073978a8361c9e34d67a09d88a425))
-* make generated agent tooling portable and optional ([42bbc2e](https://github.com/heimforge-dev/heimforge/commit/42bbc2e54dd329346e2b2908b41d5c99009a8c33))
 
 
 ### Documentation
 
 * make generated agent guidance provider-neutral ([1de2e8b](https://github.com/heimforge-dev/heimforge/commit/1de2e8b16e0095aa5319c48fcc6503dcdb8fd1fd))
-* simplify project readmes ([262e5b9](https://github.com/heimforge-dev/heimforge/commit/262e5b999f1d7c28c1863887a326b7527b49e7c2))
 * simplify project readmes ([2867f86](https://github.com/heimforge-dev/heimforge/commit/2867f862a1d086cc00f69cacdc9637ca332d9954))
 
 ## [0.7.1](https://github.com/heimforge-dev/heimforge/compare/v0.7.0...v0.7.1) (2026-09-27)
