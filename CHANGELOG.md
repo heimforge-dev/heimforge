@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.0](https://github.com/heimforge-dev/heimforge/compare/v0.7.1...v0.8.0) (2026-09-27)
+
+
+### Features
+
+* make agent tooling portable and optional ([181327f](https://github.com/heimforge-dev/heimforge/commit/181327f1df2073978a8361c9e34d67a09d88a425))
+
+
+### Documentation
+
+* make generated agent guidance provider-neutral ([1de2e8b](https://github.com/heimforge-dev/heimforge/commit/1de2e8b16e0095aa5319c48fcc6503dcdb8fd1fd))
+* simplify project readmes ([2867f86](https://github.com/heimforge-dev/heimforge/commit/2867f862a1d086cc00f69cacdc9637ca332d9954))
+
 ## [0.7.1](https://github.com/heimforge-dev/heimforge/compare/v0.7.0...v0.7.1) (2026-09-27)
 
 
