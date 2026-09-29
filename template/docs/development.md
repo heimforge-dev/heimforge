@@ -71,6 +71,28 @@ suite metadata -> server DeploymentPlan -> local or SSH deployment
 
 Changing transport never changes which modules enter the server plan. The local and SSH backends receive the same exact metadata-derived DLL list.
 
+### Choosing a server setup
+
+Docker is optional. Deployment transport and server lifecycle are configured
+independently.
+
+| Server environment | Deployment | Lifecycle |
+| --- | --- | --- |
+| Same machine or mounted filesystem | `type: "local"` | `none` or `docker` |
+| Remote POSIX server with SSH | `type: "ssh"`, `remotePlatform: "posix"` | `none` or `docker` |
+| Remote Windows server with OpenSSH | `type: "ssh"`, `remotePlatform: "windows"` | `none` or `docker` |
+| Managed host with only FTP/SFTP or a control-panel file manager | manual/provider upload | provider-managed |
+
+For SSH deployment, HeimForge requires a real remote command channel in
+addition to file transfer. The deployment process creates staging directories,
+checks the existing deployment state, verifies files, and promotes the staged
+deployment on the remote host.
+
+A hosting provider that exposes only FTP/SFTP or a file-management panel
+therefore cannot use the automated SSH deployment backend. The generated
+build/package outputs can still be uploaded through the provider's normal
+tools.
+
 ### Local transport
 
 The generated schema-v2 example uses a local suite-specific destination:

@@ -95,7 +95,7 @@ class NoStaleModuleReferencesTests(unittest.TestCase):
                     self.assertNotIn("./scripts/deploy-server.sh Debug", readme_lines)
                     self.assertEqual(set(), server_note_lines)
                     self.assertNotIn(
-                        "+-- deploy server DLLs to the Linux/Docker dedicated server", readme_lines
+                        "+-- deploy server DLLs to the configured local or remote server", readme_lines
                     )
                 else:
                     self.assertIn("- ServerPack", release_lines)

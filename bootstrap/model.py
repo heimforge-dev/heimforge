@@ -449,7 +449,7 @@ def deploy_topology_lines(model: ProjectModel) -> str:
     if model.has_client_package:
         lines.append("        +-- deploy client DLLs to Windows Valheim through /mnt/c/...")
     if model.has_server_package:
-        lines.append("        +-- deploy server DLLs to the Linux/Docker dedicated server")
+        lines.append("        +-- deploy server DLLs to the configured local or remote server")
     return "\n".join(lines)
 
 

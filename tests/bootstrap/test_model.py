@@ -181,6 +181,11 @@ class ModelTests(unittest.TestCase):
         self.assertNotIn("Shared Diagnostics", tokens["HARDENING_PENDING_PROOF_LIST"])
         self.assertIn("- Shared Diagnostics RPC runtime proof", token_map(build_model(make_params()))["PENDING_RUNTIME_PROOF_LIST"])
 
+    def test_deploy_topology_is_hosting_agnostic(self):
+        topology = token_map(build_model(make_params()))["DEPLOY_TOPOLOGY_LINES"]
+        self.assertIn("configured local or remote server", topology)
+        self.assertNotIn("Linux/Docker", topology)
+
     def test_deploy_side_notes_name_exactly_the_modules_that_side_receives(self):
         server_core_and_diagnostics = token_map(
             build_model(make_params(include_client=False))

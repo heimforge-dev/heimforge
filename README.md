@@ -88,6 +88,25 @@ cp .valheim/dev.json.example .valheim/dev.json
 clean reference project generated with all supported module tiers enabled and
 no added gameplay code.
 
+## Server deployment
+
+Generated projects are not tied to Docker.
+
+Server deployment supports:
+
+- local filesystem destinations
+- remote POSIX servers over SSH
+- remote Windows servers over SSH
+
+Docker is optional and is used only for server lifecycle operations such as
+restart, status, and logs. Use `lifecycle.type: "none"` when HeimForge should
+deploy files without controlling the server process.
+
+Automated remote deployment requires an SSH command channel. Managed hosting
+providers that expose only FTP/SFTP or a control-panel file manager can still
+use HeimForge build and package outputs, but deployment and restart must be
+handled through the provider's tools.
+
 ## Licensing
 
 HeimForge source and documentation outside `template/` are licensed under
