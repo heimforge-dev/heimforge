@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/heimforge-dev/heimforge/compare/v0.8.0...v0.8.1) (2026-09-29)
+
+
+### Documentation
+
+* clarify server deployment support ([fb79cc4](https://github.com/heimforge-dev/heimforge/commit/fb79cc435d4fba9fba5d5753e39ee0b1f7ab6e65))
+
 ## [0.8.0](https://github.com/heimforge-dev/heimforge/compare/v0.7.1...v0.8.0) (2026-09-27)
 
 
